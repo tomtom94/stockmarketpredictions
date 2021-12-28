@@ -1,0 +1,53 @@
+{
+  "name": "stockmarketpredictions",
+  "version": "1.0.0",
+  "description": "Stock Market Predictions",
+  "main": "scripts/start.js",
+  "engines": {
+    "node": "14.16.1"
+  },
+  "repository": {
+    "type": "git"
+  },
+  "author": {
+    "name": "Thomas Aumaitre",
+    "email": "thomas.aumaitre@gmail.com"
+  },
+  "browserslist": [
+    "defaults"
+  ],
+  "license": "SEE LICENSE IN LICENSE",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "dev": "node scripts/dev.js",
+    "install:clean": "rm -rf node_modules/ && rm -rf dist/ && rm -rf package-lock.json && npm install"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs": "^3.12.0",
+    "core-js": "^3.20.1",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "highcharts": "^9.3.2",
+    "highcharts-react-official": "^3.1.0",
+    "react": "^17.0.2",
+    "react-dom": "^16.12.0",
+    "react-hot-loader": "^4.13.0",
+    "regenerator-runtime": "^0.13.9"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.16.0",
+    "@babel/plugin-proposal-class-properties": "^7.16.0",
+    "@babel/plugin-proposal-object-rest-spread": "^7.16.0",
+    "@babel/plugin-transform-spread": "^7.16.0",
+    "@babel/preset-env": "^7.16.0",
+    "@babel/preset-react": "^7.16.0",
+    "@hot-loader/react-dom": "^16.8.3",
+    "babel-loader": "^8.2.3",
+    "html-webpack-plugin": "^5.5.0",
+    "path": "^0.12.7",
+    "rimraf": "^3.0.2",
+    "webpack": "^5.61.0",
+    "webpack-dev-middleware": "^5.2.1",
+    "webpack-hot-middleware": "^2.25.1"
+  }
+}
