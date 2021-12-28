@@ -30,7 +30,7 @@ const start = async () => {
       if (err) {
         throw err;
       }
-      console.log(`Hot dev server http://localhost:${PORT} 🌎`);
+      console.log(`Server listening on port ${PORT} 🌎`);
     });
   } catch (error) {
     console.error(error);
