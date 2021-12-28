@@ -6,7 +6,7 @@ const cors = require("cors");
 
 const { compilerListener, paths, compilation } = require("./utils");
 
-const PORT = process.en.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 const app = express();
 
