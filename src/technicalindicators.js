@@ -5,8 +5,7 @@ export const SMA = ({ period, data }) => {
     }
     const targetValues = array.slice(index + 1 - period, index + 1);
     const total = targetValues.reduce(
-      (total, targetValue) =>
-        total + Number(targetValue[1]["5. adjusted close"]),
+      (total, targetValue) => total + Number(targetValue[1]["4. close"]),
       0
     );
     const value = total / period;
