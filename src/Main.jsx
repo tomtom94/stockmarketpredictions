@@ -3,7 +3,7 @@ import { hot } from "react-hot-loader/root";
 import Highcharts, { css } from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 import * as tf from "@tensorflow/tfjs";
-import { SMA } from "./technicalindicators";
+import { SMA, RSI } from "./technicalindicators";
 
 import stockMarketData from "./stockMarketData.json";
 
@@ -17,9 +17,23 @@ const Main = () => {
   const [dataSma20, setDataSma20] = useState(null);
   const [dataSma50, setDataSma50] = useState(null);
   const [dataSma100, setDataSma100] = useState(null);
+  const [dataRsi14, setDataRsi14] = useState(null);
+  const [dataRsi28, setDataRsi28] = useState(null);
 
   useEffect(() => {
     if (data.length) {
+      setDataRsi14(
+        RSI({
+          period: 14,
+          data,
+        })
+      );
+      setDataRsi28(
+        RSI({
+          period: 28,
+          data,
+        })
+      );
       setDataSma20(
         SMA({
           period: 20,
@@ -68,21 +82,21 @@ const Main = () => {
     }
   }, [data, series]);
 
-  useEffect(() => {
-    if (
-      dataSma20 &&
-      series.findIndex((serie) => serie.name === "SMA 20 periods") === -1
-    ) {
-      setSeries([
-        ...series,
-        {
-          type: "area",
-          name: "SMA 20 periods",
-          data: dataSma20.map((e) => [new Date(e[0]).getTime(), e[1].value]),
-        },
-      ]);
-    }
-  }, [dataSma20, series]);
+  // useEffect(() => {
+  //   if (
+  //     dataSma20 &&
+  //     series.findIndex((serie) => serie.name === "SMA 20 periods") === -1
+  //   ) {
+  //     setSeries([
+  //       ...series,
+  //       {
+  //         type: "area",
+  //         name: "SMA 20 periods",
+  //         data: dataSma20.map((e) => [new Date(e[0]).getTime(), e[1].value]),
+  //       },
+  //     ]);
+  //   }
+  // }, [dataSma20, series]);
 
   // useEffect(() => {
   //   if (
@@ -100,28 +114,38 @@ const Main = () => {
   //   }
   // }, [dataSma50, series]);
 
-  // useEffect(() => {
-  //   if (
-  //     dataSma100 &&
-  //     series.findIndex((serie) => serie.name === "SMA 100 periods") === -1
-  //   ) {
-  //     setSeries([
-  //       ...series,
-  //       {
-  //         type: "area",
-  //         name: "SMA 100 periods",
-  //         data: dataSma100.map((e) => [new Date(e[0]).getTime(), e[1].value]),
-  //       },
-  //     ]);
-  //   }
-  // }, [dataSma100, series]);
+  useEffect(() => {
+    if (
+      dataSma100 &&
+      series.findIndex((serie) => serie.name === "SMA 100 periods") === -1
+    ) {
+      setSeries([
+        ...series,
+        {
+          type: "area",
+          name: "SMA 100 periods",
+          data: dataSma100.map((e) => [new Date(e[0]).getTime(), e[1].value]),
+        },
+      ]);
+    }
+  }, [dataSma100, series]);
 
   const splitData = (trainingRange) => {
     const descSma20 = dataSma20.reverse();
+    const descSma50 = dataSma50.reverse();
+    const descSma100 = dataSma100.reverse();
+    const descRsi14 = dataRsi14.reverse();
+    const descRsi28 = dataRsi28.reverse();
     const dataRaw = JSON.parse(JSON.stringify(data))
       .reverse()
       .reduce((acc, curr, index, array) => {
-        if (!descSma20[index]) {
+        if (
+          !descSma20[index] ||
+          !descSma50[index] ||
+          !descSma100[index] ||
+          !descRsi14[index] ||
+          !descRsi28[index]
+        ) {
           return acc;
         }
         return [
@@ -130,6 +154,10 @@ const Main = () => {
             // new Date(curr[0]).getTime(),
             Number(curr[1]["4. close"]),
             descSma20[index][1].value,
+            descSma50[index][1].value,
+            descSma100[index][1].value,
+            descRsi14[index][1].value,
+            descRsi28[index][1].value,
           ],
         ];
       }, [])
@@ -153,8 +181,7 @@ const Main = () => {
 
     let labels = tf.slice(dataset, [sliceNumber], [sliceNumber]);
 
-    labels = tf.split(labels, 2, 1)[0];
-
+    labels = tf.split(labels, 6, 1)[0];
     const {
       normalizedTensor: xs,
       maxval: inputMax,
@@ -171,7 +198,7 @@ const Main = () => {
 
   const createModel = async () => {
     try {
-      rebootSerie();
+      rebootSeries();
       setIsModelTraining(true);
       setModelResultTraining(null);
       const model = tf.sequential();
@@ -179,7 +206,7 @@ const Main = () => {
       model.add(
         tf.layers.dense({
           units: 1,
-          inputShape: [2],
+          inputShape: [6],
         })
       );
 
@@ -219,7 +246,7 @@ const Main = () => {
     }
   };
 
-  const makePredictions = (xs) => {
+  const gessLabels = (xs) => {
     const inputs = tf.tensor2d(xs, [xs.length, xs[0].length]);
     const normalizedInput = normalizeTensor(
       inputs,
@@ -236,10 +263,10 @@ const Main = () => {
     return Array.from(predictedResults.dataSync());
   };
 
-  const validateModel = () => {
-    const newSeries = rebootSerie();
+  const makePredictions = () => {
+    const newSeries = rebootSeries();
     const xs = splitData([0.9, 1]);
-    const ys = makePredictions(xs);
+    const ys = gessLabels(xs);
     const lastDate = data[data.length - 1][0];
     const dataSeriePredicted = ys.map((label, i) => {
       const datePredicted = new Date(lastDate).setDate(
@@ -257,7 +284,7 @@ const Main = () => {
     ]);
   };
 
-  const rebootSerie = () => {
+  const rebootSeries = () => {
     const serieIndex = series.findIndex(
       (serie) => serie.name === "Validate with known X but unknown Y"
     );
@@ -344,25 +371,29 @@ const Main = () => {
 
   return (
     <div>
-      <h1>Welcome to stockmarketpredictions app</h1>
+      <h1>Welcome to Stock Market Predictions App with Tensorflow.js</h1>
+      <h2>
+        Use the IA in the browser with your own computer's power, don't do this
+        with your smartphone ;)
+      </h2>
       <HighchartsReact highcharts={Highcharts} options={options} />
 
-      <div>
+      <div style={{ margin: "10px 5px" }}>
         <button
           onClick={createModel}
           type="button"
           disabled={isModelTraining}
-          style={{ fontSize: 16, margin: 5 }}
+          style={{ fontSize: 16, marginRight: 5 }}
         >
-          {isModelTraining ? "Model is training" : "Create model"}
+          {isModelTraining ? "Model is training" : "Create and validate model"}
         </button>
         <button
-          onClick={validateModel}
+          onClick={makePredictions}
           type="button"
           disabled={!modelResultTraining}
-          style={{ fontSize: 16, margin: 5 }}
+          style={{ fontSize: 16, marginRight: 5 }}
         >
-          Validate model
+          Make predictions
         </button>
 
         <a
@@ -372,7 +403,6 @@ const Main = () => {
         >
           More details on Github
         </a>
-
         {modelLogs.length > 0 && (
           <ul>
             {modelLogs.map((modelLog, indexModelLog) => (
@@ -380,6 +410,26 @@ const Main = () => {
             ))}
           </ul>
         )}
+
+        <p>
+          We use a (70%, 20%, 10%) periods split for the training, validation,
+          and test sets.
+        </p>
+        <ul>
+          <li>
+            Create and validate model button : uses training and validation sets
+            (70% and 20%)
+          </li>
+          <li>
+            Make predictions button : uses test set (10%). Which means we are
+            making predictions on the next 10% periods in the future straight.
+          </li>
+        </ul>
+        <p>
+          Nota Bene : Each time you create a model, predictions aren't the same.
+          And also you may need to click 2 times on Make predictions button.
+          Don't know why yet ;) Amazon is fucking crazy.
+        </p>
       </div>
     </div>
   );

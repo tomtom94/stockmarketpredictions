@@ -1,9 +1,15 @@
-# Elegant stock market predictions app with Tensorflow.js
+# Elegant financial predictions app with Tensorflow.js
 
 ## Introduction
 
 Predictions made on Amazon stock market (fresh data until 2021-12-28) with Tensorflow.js.
-For the moment just using a model with SMA (Simple Moving Average) as indicator.
+For the moment just using a model with the following indicators :
+
+- SMA20 (Simple Moving Average 20 periods)
+- SMA50 (Simple Moving Average 50 periods)
+- SMA100 (Simple Moving Average 100 periods)
+- RSI14 (Relative Strength Index 14 periods)
+- RSI28 (Relative Strength Index 28 periods)
 
 Check out this app in live [stockmarketpredictions.herokuapp.com](https://stockmarketpredictions.herokuapp.com)
 
