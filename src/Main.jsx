@@ -3,7 +3,7 @@ import { hot } from "react-hot-loader/root";
 import Highcharts, { css } from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 import * as tf from "@tensorflow/tfjs";
-import { SMA, RSI } from "./technicalindicators";
+import { SMA, RSI, stochastic } from "./technicalindicators";
 
 import stockMarketData from "./stockMarketData.json";
 
@@ -19,9 +19,15 @@ const Main = () => {
   const [dataSma100, setDataSma100] = useState(null);
   const [dataRsi14, setDataRsi14] = useState(null);
   const [dataRsi28, setDataRsi28] = useState(null);
-
+  const [dataStochastic14, setDataStochastic14] = useState(null);
   useEffect(() => {
     if (data.length) {
+      setDataStochastic14(
+        stochastic({
+          period: 14,
+          data,
+        })
+      );
       setDataRsi14(
         RSI({
           period: 14,
@@ -136,6 +142,7 @@ const Main = () => {
     const descSma100 = dataSma100.reverse();
     const descRsi14 = dataRsi14.reverse();
     const descRsi28 = dataRsi28.reverse();
+    const descStochastic14 = dataStochastic14.reverse();
     const dataRaw = JSON.parse(JSON.stringify(data))
       .reverse()
       .reduce((acc, curr, index, array) => {
@@ -144,7 +151,8 @@ const Main = () => {
           !descSma50[index] ||
           !descSma100[index] ||
           !descRsi14[index] ||
-          !descRsi28[index]
+          !descRsi28[index] ||
+          !descStochastic14[index]
         ) {
           return acc;
         }
@@ -158,6 +166,7 @@ const Main = () => {
             descSma100[index][1].value,
             descRsi14[index][1].value,
             descRsi28[index][1].value,
+            descStochastic14[index][1].value,
           ],
         ];
       }, [])
@@ -174,14 +183,14 @@ const Main = () => {
   const makeDataset = (range) => {
     const dataRange = splitData(range);
     const dataset = tf.tensor2d(dataRange);
-
+    const inputDimensions = dataRange[0].length;
     const sliceNumber = Math.floor((dataRange.length - 1) / 2);
 
     const inputs = tf.slice(dataset, [0], [sliceNumber]);
 
     let labels = tf.slice(dataset, [sliceNumber], [sliceNumber]);
 
-    labels = tf.split(labels, 6, 1)[0];
+    labels = tf.split(labels, inputDimensions, 1)[0];
     const {
       normalizedTensor: xs,
       maxval: inputMax,
@@ -193,7 +202,15 @@ const Main = () => {
       minval: labelMin,
     } = normalizeTensorFit(labels);
 
-    return { inputs: xs, labels: ys, inputMax, inputMin, labelMax, labelMin };
+    return {
+      inputs: xs,
+      labels: ys,
+      inputDimensions,
+      inputMax,
+      inputMin,
+      labelMax,
+      labelMin,
+    };
   };
 
   const createModel = async () => {
@@ -201,28 +218,33 @@ const Main = () => {
       rebootSeries();
       setIsModelTraining(true);
       setModelResultTraining(null);
+      const train = makeDataset([0, 0.7]);
+      const validate = makeDataset([0.7, 0.9]);
+
       const model = tf.sequential();
 
       model.add(
         tf.layers.dense({
           units: 1,
-          inputShape: [6],
+          inputShape: [train.inputDimensions],
         })
       );
 
+      const epochs = 50;
+
       model.compile({ optimizer: "sgd", loss: "meanSquaredError" });
-      const train = makeDataset([0, 0.7]);
-      const validate = makeDataset([0.7, 0.9]);
+
       setModelLogs([]);
       modelLogsRef.current = [];
       const history = await model.fit(train.inputs, train.labels, {
-        epochs: 40,
+        batchSize: 32,
+        epochs,
         validationData: [validate.inputs, validate.labels],
         shuffle: true,
         callbacks: {
           onEpochEnd: (epoch, log) => {
             modelLogsRef.current.push(
-              `Epoch: ${epoch + 1} ; loss: ${log.loss}`
+              `Epoch: ${epoch + 1}/${epochs} ; loss: ${log.loss}`
             );
             setModelLogs([...modelLogsRef.current]);
           },

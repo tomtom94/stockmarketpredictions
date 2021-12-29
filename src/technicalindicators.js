@@ -13,7 +13,36 @@ export const SMA = ({ period, data }) => {
   }, []);
 };
 
+export const stochastic = ({ period, data }) => {
+  // https://investexcel.net/how-to-calculate-the-stochastic-oscillator/
+  return data.reduce((acc, curr, index, array) => {
+    if (index + 1 - period < 0) {
+      return acc;
+    }
+    const targetValues = array.slice(index + 1 - period, index + 1);
+    const currentValue = targetValues[targetValues.length - 1][1]["4. close"];
+    const highestHigh = targetValues.reduce((acc, targetValue) => {
+      const indicator = Number(targetValue[1]["2. high"]);
+      if (!acc || indicator > acc) {
+        return indicator;
+      }
+      return acc;
+    }, null);
+    const lowestLow = targetValues.reduce((acc, targetValue) => {
+      const indicator = Number(targetValue[1]["3. low"]);
+      if (!acc || indicator < acc) {
+        return indicator;
+      }
+      return acc;
+    }, null);
+    const value =
+      ((currentValue - lowestLow) / (highestHigh - lowestLow)) * 100;
+    return [...acc, [curr[0], { value, set: targetValues }]];
+  }, []);
+};
+
 export const RSI = ({ period, data }) => {
+  // https://www.macroption.com/rsi-calculation/
   return data.reduce((acc, curr, index, array) => {
     if (index + 1 - period < 0) {
       return acc;
