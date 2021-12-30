@@ -4,6 +4,7 @@ import Highcharts, { css } from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 import * as tf from "@tensorflow/tfjs";
 import { SMA, RSI, stochastic } from "./technicalindicators";
+import _ from "lodash";
 
 import stockMarketData from "./stockMarketData.json";
 
@@ -20,6 +21,35 @@ const Main = () => {
   const [dataRsi14, setDataRsi14] = useState(null);
   const [dataRsi28, setDataRsi28] = useState(null);
   const [dataStochastic14, setDataStochastic14] = useState(null);
+  const [sampleData, setSampleData] = useState(null);
+
+  useEffect(() => {
+    const isSplitDataReady =
+      data.length > 0 &&
+      dataSma20 &&
+      dataSma50 &&
+      dataSma100 &&
+      dataRsi14 &&
+      dataRsi28 &&
+      dataStochastic14;
+    if (isSplitDataReady) {
+      const sampleDataRaw = splitData([0.98, 1]);
+      const {
+        dataNormalized: sampleDataNormalized,
+        dimensionParams: sampleDimensionParams,
+      } = normalizeData(sampleDataRaw);
+      setSampleData({ sampleDataRaw, sampleDataNormalized });
+    }
+  }, [
+    data,
+    dataSma20,
+    dataSma50,
+    dataSma100,
+    dataRsi14,
+    dataRsi28,
+    dataStochastic14,
+  ]);
+
   useEffect(() => {
     if (data.length) {
       setDataStochastic14(
@@ -137,12 +167,14 @@ const Main = () => {
   }, [dataSma100, series]);
 
   const splitData = (trainingRange) => {
-    const descSma20 = dataSma20.reverse();
-    const descSma50 = dataSma50.reverse();
-    const descSma100 = dataSma100.reverse();
-    const descRsi14 = dataRsi14.reverse();
-    const descRsi28 = dataRsi28.reverse();
-    const descStochastic14 = dataStochastic14.reverse();
+    const descSma20 = JSON.parse(JSON.stringify(dataSma20)).reverse();
+    const descSma50 = JSON.parse(JSON.stringify(dataSma50)).reverse();
+    const descSma100 = JSON.parse(JSON.stringify(dataSma100)).reverse();
+    const descRsi14 = JSON.parse(JSON.stringify(dataRsi14)).reverse();
+    const descRsi28 = JSON.parse(JSON.stringify(dataRsi28)).reverse();
+    const descStochastic14 = JSON.parse(
+      JSON.stringify(dataStochastic14)
+    ).reverse();
     const dataRaw = JSON.parse(JSON.stringify(data))
       .reverse()
       .reduce((acc, curr, index, array) => {
@@ -180,9 +212,55 @@ const Main = () => {
     return chunk;
   };
 
+  const normalizeData = (dataRaw, params) => {
+    const unstackData = (stachData, axis) => stachData.map((e) => e[axis]);
+    const dataPerDimension = [];
+    for (let i = 0; i < dataRaw[0].length; i++) {
+      dataPerDimension.push(unstackData(dataRaw, i));
+    }
+    let dimensionParams = params;
+    const y = [9, 2, 5, 4, 12, 7, 8, 11, 9, 3, 7, 4, 12, 5, 4, 10, 9, 6, 9, 4];
+
+    if (!params) {
+      dimensionParams = dataPerDimension.map((dimension) => {
+        const mean = _.mean(dimension);
+        const min = _.min(dimension);
+        const max = _.max(dimension);
+        return {
+          min,
+          max,
+          mean,
+          std: Math.sqrt(
+            _.sum(dimension.map((e) => Math.abs(e - mean) ** 2)) /
+              dimension.length
+          ),
+          // https://www.geeksforgeeks.org/numpy-std-in-python/
+        };
+      });
+    }
+
+    return {
+      dataNormalized: dataRaw.map((set) =>
+        set.map(
+          (e, i) => (e - dimensionParams[i].mean) / dimensionParams[i].std
+        )
+      ),
+      // https://www.tensorflow.org/tutorials/structured_data/time_series#normalize_the_data
+      dimensionParams,
+    };
+  };
+
+  const unNormalizeData = (dataRaw, dimensionParam) => {
+    if (!dimensionParam) {
+      return [];
+    }
+    return dataRaw.map((e) => e * dimensionParam.std + dimensionParam.mean);
+  };
+
   const makeDataset = (range) => {
     const dataRange = splitData(range);
-    const dataset = tf.tensor2d(dataRange);
+    const { dataNormalized, dimensionParams } = normalizeData(dataRange);
+    const dataset = tf.tensor2d(dataNormalized);
     const inputDimensions = dataRange[0].length;
     const sliceNumber = Math.floor((dataRange.length - 1) / 2);
 
@@ -191,25 +269,12 @@ const Main = () => {
     let labels = tf.slice(dataset, [sliceNumber], [sliceNumber]);
 
     labels = tf.split(labels, inputDimensions, 1)[0];
-    const {
-      normalizedTensor: xs,
-      maxval: inputMax,
-      minval: inputMin,
-    } = normalizeTensorFit(inputs);
-    const {
-      normalizedTensor: ys,
-      maxval: labelMax,
-      minval: labelMin,
-    } = normalizeTensorFit(labels);
 
     return {
-      inputs: xs,
-      labels: ys,
+      inputs,
+      labels,
       inputDimensions,
-      inputMax,
-      inputMin,
-      labelMax,
-      labelMin,
+      dimensionParams,
     };
   };
 
@@ -230,7 +295,7 @@ const Main = () => {
         })
       );
 
-      const epochs = 50;
+      const epochs = 100;
 
       model.compile({ optimizer: "sgd", loss: "meanSquaredError" });
 
@@ -243,9 +308,7 @@ const Main = () => {
         shuffle: true,
         callbacks: {
           onEpochEnd: (epoch, log) => {
-            modelLogsRef.current.push(
-              `Epoch: ${epoch + 1}/${epochs} ; loss: ${log.loss}`
-            );
+            modelLogsRef.current.push([epoch + 1, log.loss]);
             setModelLogs([...modelLogsRef.current]);
           },
         },
@@ -253,12 +316,7 @@ const Main = () => {
       const result = {
         model: model,
         stats: history,
-        normalize: {
-          inputMax: train.inputMax,
-          inputMin: train.inputMin,
-          labelMax: train.labelMax,
-          labelMin: train.labelMin,
-        },
+        dimensionParams: train.dimensionParams,
       };
       setModelResultTraining(result);
     } catch (error) {
@@ -268,27 +326,22 @@ const Main = () => {
     }
   };
 
-  const gessLabels = (xs) => {
-    const inputs = tf.tensor2d(xs, [xs.length, xs[0].length]);
-    const normalizedInput = normalizeTensor(
-      inputs,
-      modelResultTraining.normalize["inputMax"],
-      modelResultTraining.normalize["inputMin"]
-    );
-    const model_out = modelResultTraining.model.predict(normalizedInput);
-    const predictedResults = unNormalizeTensor(
-      model_out,
-      modelResultTraining.normalize["labelMax"],
-      modelResultTraining.normalize["labelMin"]
-    );
-
-    return Array.from(predictedResults.dataSync());
+  const gessLabels = (inputs, dimensionParams) => {
+    const xs = tf.tensor2d(inputs, [inputs.length, inputs[0].length]);
+    let outputs = modelResultTraining.model.predict(xs);
+    outputs = Array.from(outputs.dataSync());
+    const results = unNormalizeData(outputs, dimensionParams[0]);
+    return results;
   };
 
   const makePredictions = () => {
     const newSeries = rebootSeries();
     const xs = splitData([0.9, 1]);
-    const ys = gessLabels(xs);
+    const { dataNormalized } = normalizeData(
+      xs,
+      modelResultTraining.dimensionParams
+    );
+    const ys = gessLabels(dataNormalized, modelResultTraining.dimensionParams);
     const lastDate = data[data.length - 1][0];
     const dataSeriePredicted = ys.map((label, i) => {
       const datePredicted = new Date(lastDate).setDate(
@@ -317,20 +370,6 @@ const Main = () => {
     }
     return newSeries;
   };
-
-  const normalizeTensorFit = (tensor) => {
-    const maxval = tensor.max();
-    const minval = tensor.min();
-
-    const normalizedTensor = normalizeTensor(tensor, maxval, minval);
-    return { normalizedTensor, maxval, minval };
-  };
-
-  const normalizeTensor = (tensor, maxval, minval) =>
-    tensor.sub(minval).div(maxval.sub(minval));
-
-  const unNormalizeTensor = (tensor, maxval, minval) =>
-    tensor.mul(maxval.sub(minval)).add(minval);
 
   const options = {
     chart: {
@@ -391,6 +430,53 @@ const Main = () => {
     series,
   };
 
+  const options2 = {
+    title: {
+      text: "Model training graph",
+    },
+
+    subtitle: {
+      text: "Tensorflow.js model loss through training epoch",
+    },
+
+    yAxis: {
+      title: {
+        text: "Loss",
+      },
+    },
+
+    xAxis: {
+      accessibility: {
+        rangeDescription: "Epoch",
+      },
+    },
+
+    plotOptions: {
+      series: {
+        label: {
+          connectorAllowed: false,
+        },
+      },
+    },
+
+    series: [
+      {
+        name: "loss",
+        data: modelLogs,
+      },
+    ],
+
+    responsive: {
+      rules: [
+        {
+          condition: {
+            maxWidth: 500,
+          },
+        },
+      ],
+    },
+  };
+
   return (
     <div>
       <h1>Welcome to Stock Market Predictions App with Tensorflow.js</h1>
@@ -417,7 +503,6 @@ const Main = () => {
         >
           Make predictions
         </button>
-
         <a
           href="https://github.com/tomtom94/stockmarketpredictions"
           target="_blank"
@@ -426,13 +511,34 @@ const Main = () => {
           More details on Github
         </a>
         {modelLogs.length > 0 && (
-          <ul>
-            {modelLogs.map((modelLog, indexModelLog) => (
-              <li key={`modelLog-${indexModelLog}`}>{modelLog}</li>
-            ))}
-          </ul>
+          <>
+            <HighchartsReact highcharts={Highcharts} options={options2} />
+          </>
         )}
-
+        {sampleData && (
+          <>
+            <p>Exemple data raw below</p>
+            <table>
+              {sampleData.sampleDataRaw.map((e1, i1) => (
+                <tr key={`row-${i1}`}>
+                  {e1.map((e2, i2) => (
+                    <td key={`column-${i1}`}>{e2}</td>
+                  ))}
+                </tr>
+              ))}
+            </table>
+            <p>Exemple data normalized below</p>
+            <table>
+              {sampleData.sampleDataNormalized.map((e1, i1) => (
+                <tr key={`row-${i1}`}>
+                  {e1.map((e2, i2) => (
+                    <td key={`column-${i1}`}>{e2}</td>
+                  ))}
+                </tr>
+              ))}
+            </table>
+          </>
+        )}
         <p>
           We use a (70%, 20%, 10%) periods split for the training, validation,
           and test sets.
@@ -448,9 +554,8 @@ const Main = () => {
           </li>
         </ul>
         <p>
-          Nota Bene : Each time you create a model, predictions aren't the same.
-          And also you may need to click 2 times on Make predictions button.
-          Don't know why yet ;) Amazon is fucking crazy.
+          Analysis : Amazon only goes up each time, then the algorithm is pretty
+          kind and make it goes up, like always.
         </p>
       </div>
     </div>
