@@ -4,7 +4,6 @@ import Highcharts, { css } from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 import * as tf from "@tensorflow/tfjs";
 import { SMA, RSI, stochastic } from "./technicalindicators";
-import _ from "lodash";
 
 import stockMarketData from "./stockMarketData.json";
 
@@ -219,20 +218,31 @@ const Main = () => {
       dataPerDimension.push(unstackData(dataRaw, i));
     }
     let dimensionParams = params;
-    const y = [9, 2, 5, 4, 12, 7, 8, 11, 9, 3, 7, 4, 12, 5, 4, 10, 9, 6, 9, 4];
 
     if (!params) {
       dimensionParams = dataPerDimension.map((dimension) => {
-        const mean = _.mean(dimension);
-        const min = _.min(dimension);
-        const max = _.max(dimension);
+        const mean =
+          dimension.reduce((acc, curr) => acc + curr, 0) / dimension.length;
+        const min = dimension.reduce((acc, curr) => {
+          if (curr > acc) {
+            return acc;
+          }
+          return curr;
+        }, null);
+        const max = dimension.reduce((acc, curr) => {
+          if (curr < acc) {
+            return acc;
+          }
+          return curr;
+        }, null);
         return {
           min,
           max,
           mean,
           std: Math.sqrt(
-            _.sum(dimension.map((e) => Math.abs(e - mean) ** 2)) /
-              dimension.length
+            dimension
+              .map((e) => Math.abs(e - mean) ** 2)
+              .reduce((acc, curr) => acc + curr, 0) / dimension.length
           ),
           // https://www.geeksforgeeks.org/numpy-std-in-python/
         };
