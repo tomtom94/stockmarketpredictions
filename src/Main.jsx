@@ -586,7 +586,7 @@ const Main = () => {
         means indicators used are pretty reliable. But financial indicators all
         depends of past periods, then predictions won't ever beat the market,
         but would follow it up gently, keeping in memory how stock market
-        reacted.
+        reacted previously.
       </p>
     </div>
   );
