@@ -101,13 +101,13 @@ const Main = () => {
   useEffect(() => {
     if (
       data.length &&
-      series.findIndex((serie) => serie.name === "Stock price") === -1
+      series.findIndex((serie) => serie.name === "Real stock price") === -1
     ) {
       setSeries([
         ...series,
         {
           type: "area",
-          name: "Stock price",
+          name: "Real stock price",
           data: data.map((serie) => [
             new Date(serie[0]).getTime(),
             Number(serie[1]["4. close"]),
@@ -116,54 +116,6 @@ const Main = () => {
       ]);
     }
   }, [data, series]);
-
-  // useEffect(() => {
-  //   if (
-  //     dataSma20 &&
-  //     series.findIndex((serie) => serie.name === "SMA 20 periods") === -1
-  //   ) {
-  //     setSeries([
-  //       ...series,
-  //       {
-  //         type: "area",
-  //         name: "SMA 20 periods",
-  //         data: dataSma20.map((e) => [new Date(e[0]).getTime(), e]),
-  //       },
-  //     ]);
-  //   }
-  // }, [dataSma20, series]);
-
-  // useEffect(() => {
-  //   if (
-  //     dataSma50 &&
-  //     series.findIndex((serie) => serie.name === "SMA 50 periods") === -1
-  //   ) {
-  //     setSeries([
-  //       ...series,
-  //       {
-  //         type: "area",
-  //         name: "SMA 50 periods",
-  //         data: dataSma50.map((e) => [new Date(e[0]).getTime(), e]),
-  //       },
-  //     ]);
-  //   }
-  // }, [dataSma50, series]);
-
-  useEffect(() => {
-    if (
-      dataSma100 &&
-      series.findIndex((serie) => serie.name === "SMA 100 periods") === -1
-    ) {
-      setSeries([
-        ...series,
-        {
-          type: "area",
-          name: "SMA 100 periods",
-          data: dataSma100.map((e) => [new Date(e[0]).getTime(), e]),
-        },
-      ]);
-    }
-  }, [dataSma100, series]);
 
   const sliceData = (trainingRange) => {
     const descSma20 = JSON.parse(JSON.stringify(dataSma20)).reverse();
@@ -377,14 +329,16 @@ const Main = () => {
       ...newSeries,
       {
         type: "area",
-        name: "Prediction",
+        name: "Predicted price",
         data: predictions,
       },
     ]);
   };
 
   const rebootSeries = () => {
-    const serieIndex = series.findIndex((serie) => serie.name === "Prediction");
+    const serieIndex = series.findIndex(
+      (serie) => serie.name === "Predicted price"
+    );
     let newSeries = series;
     if (serieIndex !== -1) {
       newSeries = newSeries.splice(0, serieIndex);
@@ -411,7 +365,7 @@ const Main = () => {
     },
     yAxis: {
       title: {
-        text: "Value",
+        text: "dollar",
       },
     },
     legend: {
