@@ -503,7 +503,7 @@ const Main = () => {
     <div>
       <h1>Welcome to Stock Market Predictions App with Tensorflow.js</h1>
       <h2>
-        Use the IA in the browser with your own computer's power, don't do this
+        Use the AI in the browser with your own computer's power, don't do this
         with your smartphone ;)
       </h2>
       <HighchartsReact highcharts={Highcharts} options={options} />
