@@ -270,20 +270,14 @@ const Main = () => {
   const makeDataset = (range) => {
     const dataRange = splitData(range);
     const { dataNormalized, dimensionParams } = normalizeData(dataRange);
-    const dataset = tf.tensor2d(dataNormalized);
-    const inputDimensions = dataRange[0].length;
-    const sliceNumber = Math.floor((dataRange.length - 1) / 2);
 
-    const inputs = tf.slice(dataset, [0], [sliceNumber]);
+    // const dataset = tf.tensor2d(dataNormalized);
+    const xDataset = tf.data.array(dataNormalized);
+    const yDataset = tf.data.array(dataNormalized.map((e) => e[0])).skip(1);
 
-    let labels = tf.slice(dataset, [sliceNumber], [sliceNumber]);
-
-    labels = tf.split(labels, inputDimensions, 1)[0];
-
+    const xyDataset = tf.data.zip({ xs: xDataset, ys: yDataset }).batch(32);
     return {
-      inputs,
-      labels,
-      inputDimensions,
+      dataset: xyDataset,
       dimensionParams,
     };
   };
@@ -293,29 +287,25 @@ const Main = () => {
       rebootSeries();
       setIsModelTraining(true);
       setModelResultTraining(null);
-      const train = makeDataset([0, 0.7]);
-      const validate = makeDataset([0.7, 0.9]);
-
+      const { dataset: train, dimensionParams } = await makeDataset([0, 0.7]);
+      const { dataset: validate } = await makeDataset([0.7, 0.9]);
       const model = tf.sequential();
 
       model.add(
         tf.layers.dense({
           units: 1,
-          inputShape: [train.inputDimensions],
+          inputShape: [7],
         })
       );
 
-      const epochs = 100;
+      const epochs = 10;
 
       model.compile({ optimizer: "sgd", loss: "meanSquaredError" });
-
       setModelLogs([]);
       modelLogsRef.current = [];
-      const history = await model.fit(train.inputs, train.labels, {
-        batchSize: 32,
+      const history = await model.fitDataset(train, {
         epochs,
-        validationData: [validate.inputs, validate.labels],
-        shuffle: true,
+        validationData: validate,
         callbacks: {
           onEpochEnd: (epoch, log) => {
             modelLogsRef.current.push([epoch + 1, log.loss]);
@@ -326,7 +316,7 @@ const Main = () => {
       const result = {
         model: model,
         stats: history,
-        dimensionParams: train.dimensionParams,
+        dimensionParams,
       };
       setModelResultTraining(result);
     } catch (error) {
@@ -346,33 +336,27 @@ const Main = () => {
 
   const makePredictions = () => {
     const newSeries = rebootSeries();
-    const xs = splitData([0.9, 1]);
-    const { dataNormalized } = normalizeData(
-      xs,
-      modelResultTraining.dimensionParams
-    );
-    const ys = gessLabels(dataNormalized, modelResultTraining.dimensionParams);
+    let xs = splitData([0.9, 1]);
+    const { dataNormalized, dimensionParams } = normalizeData(xs);
+    const ys = gessLabels(dataNormalized, dimensionParams);
+    const labelPredicted = ys[ys.length - 1];
+
     const lastDate = data[data.length - 1][0];
-    const dataSeriePredicted = ys.map((label, i) => {
-      const datePredicted = new Date(lastDate).setDate(
-        new Date(lastDate).getDate() + i
-      );
-      return [datePredicted, label];
-    });
+    const datePredicted = new Date(lastDate).setDate(
+      new Date(lastDate).getDate() + 1
+    );
     setSeries([
       ...newSeries,
       {
         type: "area",
-        name: "Validate with known X but unknown Y",
-        data: dataSeriePredicted,
+        name: "Prediction",
+        data: [[datePredicted, labelPredicted]],
       },
     ]);
   };
 
   const rebootSeries = () => {
-    const serieIndex = series.findIndex(
-      (serie) => serie.name === "Validate with known X but unknown Y"
-    );
+    const serieIndex = series.findIndex((serie) => serie.name === "Prediction");
     let newSeries = series;
     if (serieIndex !== -1) {
       newSeries = newSeries.splice(0, serieIndex);
@@ -529,23 +513,27 @@ const Main = () => {
           <>
             <p>Exemple data raw below</p>
             <table>
-              {sampleData.sampleDataRaw.map((e1, i1) => (
-                <tr key={`row-${i1}`}>
-                  {e1.map((e2, i2) => (
-                    <td key={`column-${i1}`}>{e2}</td>
-                  ))}
-                </tr>
-              ))}
+              <tbody>
+                {sampleData.sampleDataRaw.map((e1, i1) => (
+                  <tr key={`sampleDataRaw-row-${i1}`}>
+                    {e1.map((e2, i2) => (
+                      <td key={`sampleDataRaw-column-${i2}`}>{e2}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
             </table>
             <p>Exemple data normalized below</p>
             <table>
-              {sampleData.sampleDataNormalized.map((e1, i1) => (
-                <tr key={`row-${i1}`}>
-                  {e1.map((e2, i2) => (
-                    <td key={`column-${i1}`}>{e2}</td>
-                  ))}
-                </tr>
-              ))}
+              <tbody>
+                {sampleData.sampleDataNormalized.map((e1, i1) => (
+                  <tr key={`sampleDataNormalized-row-${i1}`}>
+                    {e1.map((e2, i2) => (
+                      <td key={`sampleDataNormalized-column-${i2}`}>{e2}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </>
         )}
@@ -559,14 +547,11 @@ const Main = () => {
             (70% and 20%)
           </li>
           <li>
-            Make predictions button : uses test set (10%). Which means we are
-            making predictions on the next 10% periods in the future straight.
+            Make predictions button : uses test set (10%) just to guess the next
+            period's value (We need to make a loop of predictions to get the
+            next 10 days)
           </li>
         </ul>
-        <p>
-          Analysis : Amazon only goes up each time, then the algorithm is pretty
-          kind and make it goes up, like always.
-        </p>
       </div>
     </div>
   );
