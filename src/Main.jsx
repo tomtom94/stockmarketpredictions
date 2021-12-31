@@ -146,6 +146,7 @@ const Main = () => {
             curr[0],
             [
               Number(curr[1]["4. close"]),
+              Number(curr[1]["5. volume"]),
               descSma20[index],
               descSma50[index],
               descSma100[index],
@@ -255,7 +256,7 @@ const Main = () => {
       model.add(
         tf.layers.dense({
           units: 1,
-          inputShape: [7],
+          inputShape: [8],
         })
       );
 
