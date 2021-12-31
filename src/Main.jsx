@@ -585,7 +585,8 @@ const Main = () => {
         Analysis : The model's loss value is very low (inferior 0.001) which
         means indicators used are pretty reliable. But financial indicators all
         depends of past periods, then predictions won't ever beat the market,
-        but would follow it up gently.
+        but would follow it up gently, keeping in memory how stock market
+        reacted.
       </p>
     </div>
   );
