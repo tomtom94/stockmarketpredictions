@@ -32,7 +32,7 @@ const Main = () => {
       dataRsi28 &&
       dataStochastic14;
     if (isSplitDataReady) {
-      const sampleDataRaw = splitData([0.98, 1]);
+      const sampleDataRaw = sliceData([0.98, 1]).map((e) => e[1]);
       const {
         dataNormalized: sampleDataNormalized,
         dimensionParams: sampleDimensionParams,
@@ -165,7 +165,7 @@ const Main = () => {
     }
   }, [dataSma100, series]);
 
-  const splitData = (trainingRange) => {
+  const sliceData = (trainingRange) => {
     const descSma20 = JSON.parse(JSON.stringify(dataSma20)).reverse();
     const descSma50 = JSON.parse(JSON.stringify(dataSma50)).reverse();
     const descSma100 = JSON.parse(JSON.stringify(dataSma100)).reverse();
@@ -190,24 +190,34 @@ const Main = () => {
         return [
           ...acc,
           [
-            // new Date(curr[0]).getTime(),
-            Number(curr[1]["4. close"]),
-            descSma20[index],
-            descSma50[index],
-            descSma100[index],
-            descRsi14[index],
-            descRsi28[index],
-            descStochastic14[index],
+            curr[0],
+            [
+              Number(curr[1]["4. close"]),
+              descSma20[index],
+              descSma50[index],
+              descSma100[index],
+              descRsi14[index],
+              descRsi28[index],
+              descStochastic14[index],
+            ],
           ],
         ];
       }, [])
       .reverse();
-    const chunk = dataRaw.slice(
-      trainingRange[0] === 0 ? 0 : Math.ceil(trainingRange[0] * data.length),
-      trainingRange[1] === 1
-        ? dataRaw.length
-        : Math.floor(trainingRange[1] * data.length)
-    );
+    const [bottom, top] = trainingRange;
+    let chunk = [];
+    if (bottom < 1 && top <= 1) {
+      chunk = dataRaw.slice(
+        bottom === 0 ? 0 : Math.ceil(bottom * data.length),
+        top === 1 ? dataRaw.length : Math.floor(top * data.length)
+      );
+    } else {
+      if (bottom && !top) {
+        chunk = dataRaw.slice(bottom);
+      } else {
+        chunk = dataRaw.slice(bottom, top);
+      }
+    }
     return chunk;
   };
 
@@ -265,13 +275,15 @@ const Main = () => {
   };
 
   const makeDataset = async (range) => {
-    const dataRange = splitData(range);
+    const dataRange = sliceData(range).map((e) => e[1]);
     const { dataNormalized, dimensionParams } = normalizeData(dataRange);
 
     // const dataset = tf.tensor2d(dataNormalized);
-    const xDataset = tf.data.array(dataNormalized);
-    const yDataset = tf.data.array(dataNormalized.map((e) => e[0])).skip(32);
-    const xyDataset = tf.data.zip({ xs: xDataset, ys: yDataset }).batch(64);
+    const xDataset = tf.data.array(
+      dataNormalized.slice(0, dataNormalized.length - 1)
+    );
+    const yDataset = tf.data.array(dataNormalized.map((e) => e[0])).skip(1);
+    const xyDataset = tf.data.zip({ xs: xDataset, ys: yDataset }).batch(32);
     return {
       dataset: xyDataset,
       dimensionParams,
@@ -331,17 +343,28 @@ const Main = () => {
 
   const makePredictions = () => {
     const newSeries = rebootSeries();
-    let xs = splitData([0.9, 1]);
-    const { dataNormalized, dimensionParams } = normalizeData(xs);
-    let ys = gessLabels(dataNormalized, dimensionParams);
+    let xs = sliceData([0.9, 1]).reverse();
+    const chunks = [];
+    for (let i = 0; i < xs.length - 1; i++) {
+      chunks.push(xs.slice(i, i + 32));
+    }
 
-    ys = ys.slice(ys.length - 20);
-    const lastDate = data[data.length - 1][0];
-    const predictions = ys.map((e, i) => {
-      const datePredicted = new Date(lastDate).setDate(
-        new Date(lastDate).getDate() + i + 1
+    const predictions = [];
+    const newChunks = chunks.map((e) => e.reverse()).reverse();
+    newChunks.forEach((chunk) => {
+      if (chunk.length < 32) {
+        return;
+      }
+      const { dataNormalized, dimensionParams } = normalizeData(
+        chunk.map((e) => e[1])
       );
-      return [datePredicted, e];
+      let ys = gessLabels(dataNormalized, dimensionParams);
+      ys = ys[ys.length - 1];
+      const lastDate = chunk[chunk.length - 1][0];
+      const datePredicted = new Date(lastDate).setDate(
+        new Date(lastDate).getDate() + 1
+      );
+      predictions.push([datePredicted, ys]);
     });
 
     setSeries([
@@ -546,11 +569,17 @@ const Main = () => {
             (70% and 20%).
           </li>
           <li>
-            Make predictions button : use test set (10%) just to guess the next
-            32 periods right away, you may zoom on the graph to see it.
+            Make predictions button : use test set (10%). Each day we guess
+            tomorrow's value thanks to the last 32 periods. (you may need to
+            zoom on the graph)
           </li>
         </ul>
       </div>
+      <p>
+        Analysis : The model's loss value is very low (inferior 0.001) then we
+        can say the financial indicators look pretty reliable, we are almost
+        guessing perfectly :)
+      </p>
     </div>
   );
 };
