@@ -264,14 +264,13 @@ const Main = () => {
     return dataRaw.map((e) => e * dimensionParam.std + dimensionParam.mean);
   };
 
-  const makeDataset = (range) => {
+  const makeDataset = async (range) => {
     const dataRange = splitData(range);
     const { dataNormalized, dimensionParams } = normalizeData(dataRange);
 
     // const dataset = tf.tensor2d(dataNormalized);
     const xDataset = tf.data.array(dataNormalized);
     const yDataset = tf.data.array(dataNormalized.map((e) => e[0])).skip(32);
-
     const xyDataset = tf.data.zip({ xs: xDataset, ys: yDataset }).batch(64);
     return {
       dataset: xyDataset,
@@ -336,7 +335,7 @@ const Main = () => {
     const { dataNormalized, dimensionParams } = normalizeData(xs);
     let ys = gessLabels(dataNormalized, dimensionParams);
 
-    ys = ys.reverse().slice(0, 32).reverse();
+    ys = ys.slice(ys.length - 20);
     const lastDate = data[data.length - 1][0];
     const predictions = ys.map((e, i) => {
       const datePredicted = new Date(lastDate).setDate(
