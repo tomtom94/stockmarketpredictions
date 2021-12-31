@@ -5,6 +5,7 @@
 Predictions made on Amazon stock market (fresh data until 2021-12-28) with Tensorflow.js.
 For the moment just using a model with the following indicators :
 
+- daily volume
 - SMA20 (Simple Moving Average 20 periods)
 - SMA50 (Simple Moving Average 50 periods)
 - SMA100 (Simple Moving Average 100 periods)

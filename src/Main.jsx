@@ -260,7 +260,7 @@ const Main = () => {
         })
       );
 
-      const epochs = 20;
+      const epochs = 10;
 
       model.compile({ optimizer: "sgd", loss: "meanSquaredError" });
       setModelLogs([]);
@@ -343,7 +343,7 @@ const Main = () => {
     setSeries([
       ...newSeries,
       {
-        type: "area",
+        type: "line",
         name: "Predicted price",
         data: predictions,
       },
