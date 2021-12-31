@@ -10,6 +10,7 @@ For the moment just using a model with the following indicators :
 - SMA100 (Simple Moving Average 100 periods)
 - RSI14 (Relative Strength Index 14 periods)
 - RSI28 (Relative Strength Index 28 periods)
+- stochastic14 (last 14 periods)
 
 Check out this app in live [stockmarketpredictions.herokuapp.com](https://stockmarketpredictions.herokuapp.com)
 
