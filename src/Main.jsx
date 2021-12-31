@@ -101,13 +101,13 @@ const Main = () => {
   useEffect(() => {
     if (
       data.length &&
-      series.findIndex((serie) => serie.name === "Base value") === -1
+      series.findIndex((serie) => serie.name === "Stock price") === -1
     ) {
       setSeries([
         ...series,
         {
           type: "area",
-          name: "Base value",
+          name: "Stock price",
           data: data.map((serie) => [
             new Date(serie[0]).getTime(),
             Number(serie[1]["4. close"]),
@@ -351,7 +351,7 @@ const Main = () => {
 
     const predictions = [];
     const newChunks = chunks.map((e) => e.reverse()).reverse();
-    newChunks.forEach((chunk) => {
+    newChunks.forEach((chunk, index, array) => {
       if (chunk.length < 32) {
         return;
       }
@@ -360,10 +360,16 @@ const Main = () => {
       );
       let ys = gessLabels(dataNormalized, dimensionParams);
       ys = ys[ys.length - 1];
-      const lastDate = chunk[chunk.length - 1][0];
-      const datePredicted = new Date(lastDate).setDate(
-        new Date(lastDate).getDate() + 1
-      );
+      let datePredicted;
+      if (array[index + 1]) {
+        const nextChunk = array[index + 1];
+        datePredicted = new Date(nextChunk[nextChunk.length - 1][0]).getTime();
+      } else {
+        const lastDate = chunk[chunk.length - 1][0];
+        datePredicted = new Date(lastDate).setDate(
+          new Date(lastDate).getDate() + 1
+        );
+      }
       predictions.push([datePredicted, ys]);
     });
 
