@@ -14,6 +14,7 @@ const Main = () => {
   const [modelLogs, setModelLogs] = useState([]);
   const [modelResultTraining, setModelResultTraining] = useState(null);
   const modelLogsRef = useRef([]);
+  const [investing, setInvesting] = useState({ start: 1000, end: null });
   const [dataSma20, setDataSma20] = useState(null);
   const [dataSma50, setDataSma50] = useState(null);
   const [dataSma100, setDataSma100] = useState(null);
@@ -303,6 +304,8 @@ const Main = () => {
 
     const predictions = [];
     const newChunks = chunks.map((e) => e.reverse()).reverse();
+    let money = investing.start;
+    let _ys;
     newChunks.forEach((chunk, index, array) => {
       if (chunk.length < 32) {
         return;
@@ -315,6 +318,16 @@ const Main = () => {
       let datePredicted;
       if (array[index + 1]) {
         const nextChunk = array[index + 1];
+        const realEvol =
+          (nextChunk[nextChunk.length - 1][1][0] -
+            chunk[chunk.length - 1][1][0]) /
+          chunk[chunk.length - 1][1][0];
+        if (_ys) {
+          const predictionEvol = (ys - _ys) / _ys;
+          if (predictionEvol > 0) {
+            money = money * (1 + realEvol);
+          }
+        }
         datePredicted = new Date(nextChunk[nextChunk.length - 1][0]).getTime();
       } else {
         const lastDate = chunk[chunk.length - 1][0];
@@ -322,9 +335,10 @@ const Main = () => {
           new Date(lastDate).getDate() + 1
         );
       }
+      _ys = ys;
       predictions.push([datePredicted, ys]);
     });
-
+    setInvesting({ start: 1000, end: money });
     setSeries([
       ...newSeries,
       {
@@ -336,6 +350,7 @@ const Main = () => {
   };
 
   const rebootSeries = () => {
+    setInvesting({ start: 1000, end: null });
     const serieIndex = series.findIndex(
       (serie) => serie.name === "Predicted price"
     );
@@ -486,6 +501,13 @@ const Main = () => {
         >
           More details on Github
         </a>
+        <p>
+          {investing.end
+            ? `You invested ${investing.start}$, you get off with ${Math.round(
+                investing.end
+              )}$`
+            : `You are investing ${investing.start}$, click on Make predictions button`}
+        </p>
         {modelLogs.length > 0 && (
           <>
             <HighchartsReact highcharts={Highcharts} options={options2} />
