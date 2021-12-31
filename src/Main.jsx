@@ -567,7 +567,7 @@ const Main = () => {
         )}
         <p>
           We use a (70%, 20%, 10%) periods split for the training, validation,
-          and test sets.
+          and test sets, via batch of 32 periods.
         </p>
         <ul>
           <li>
