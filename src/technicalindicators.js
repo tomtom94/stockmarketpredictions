@@ -9,7 +9,7 @@ export const SMA = ({ period, data }) => {
       0
     );
     const value = total / period;
-    return [...acc, [curr[0], { value, set: targetValues }]];
+    return [...acc, value];
   }, []);
 };
 
@@ -37,7 +37,7 @@ export const stochastic = ({ period, data }) => {
     }, null);
     const value =
       ((currentValue - lowestLow) / (highestHigh - lowestLow)) * 100;
-    return [...acc, [curr[0], { value, set: targetValues }]];
+    return [...acc, value];
   }, []);
 };
 
@@ -78,8 +78,9 @@ export const RSI = ({ period, data }) => {
       downMoves.count > 0 ? downMoves.total / downMoves.count : null;
     const relativeStrength =
       averageDownMoves > 0 ? averageUpMoves / averageDownMoves : null;
-    const RSI =
+    const value =
       relativeStrength === null ? 100 : 100 - 100 / (1 + relativeStrength);
-    return [...acc, [curr[0], { value: RSI, set: targetValues }]];
+
+    return [...acc, value];
   }, []);
 };

@@ -127,7 +127,7 @@ const Main = () => {
   //       {
   //         type: "area",
   //         name: "SMA 20 periods",
-  //         data: dataSma20.map((e) => [new Date(e[0]).getTime(), e[1].value]),
+  //         data: dataSma20.map((e) => [new Date(e[0]).getTime(), e]),
   //       },
   //     ]);
   //   }
@@ -143,7 +143,7 @@ const Main = () => {
   //       {
   //         type: "area",
   //         name: "SMA 50 periods",
-  //         data: dataSma50.map((e) => [new Date(e[0]).getTime(), e[1].value]),
+  //         data: dataSma50.map((e) => [new Date(e[0]).getTime(), e]),
   //       },
   //     ]);
   //   }
@@ -159,7 +159,7 @@ const Main = () => {
         {
           type: "area",
           name: "SMA 100 periods",
-          data: dataSma100.map((e) => [new Date(e[0]).getTime(), e[1].value]),
+          data: dataSma100.map((e) => [new Date(e[0]).getTime(), e]),
         },
       ]);
     }
@@ -192,12 +192,12 @@ const Main = () => {
           [
             // new Date(curr[0]).getTime(),
             Number(curr[1]["4. close"]),
-            descSma20[index][1].value,
-            descSma50[index][1].value,
-            descSma100[index][1].value,
-            descRsi14[index][1].value,
-            descRsi28[index][1].value,
-            descStochastic14[index][1].value,
+            descSma20[index],
+            descSma50[index],
+            descSma100[index],
+            descRsi14[index],
+            descRsi28[index],
+            descStochastic14[index],
           ],
         ];
       }, [])
@@ -261,9 +261,6 @@ const Main = () => {
   };
 
   const unNormalizeData = (dataRaw, dimensionParam) => {
-    if (!dimensionParam) {
-      return [];
-    }
     return dataRaw.map((e) => e * dimensionParam.std + dimensionParam.mean);
   };
 
@@ -273,9 +270,9 @@ const Main = () => {
 
     // const dataset = tf.tensor2d(dataNormalized);
     const xDataset = tf.data.array(dataNormalized);
-    const yDataset = tf.data.array(dataNormalized.map((e) => e[0])).skip(1);
+    const yDataset = tf.data.array(dataNormalized.map((e) => e[0])).skip(32);
 
-    const xyDataset = tf.data.zip({ xs: xDataset, ys: yDataset }).batch(32);
+    const xyDataset = tf.data.zip({ xs: xDataset, ys: yDataset }).batch(64);
     return {
       dataset: xyDataset,
       dimensionParams,
@@ -298,7 +295,7 @@ const Main = () => {
         })
       );
 
-      const epochs = 10;
+      const epochs = 20;
 
       model.compile({ optimizer: "sgd", loss: "meanSquaredError" });
       setModelLogs([]);
@@ -316,7 +313,6 @@ const Main = () => {
       const result = {
         model: model,
         stats: history,
-        dimensionParams,
       };
       setModelResultTraining(result);
     } catch (error) {
@@ -338,19 +334,23 @@ const Main = () => {
     const newSeries = rebootSeries();
     let xs = splitData([0.9, 1]);
     const { dataNormalized, dimensionParams } = normalizeData(xs);
-    const ys = gessLabels(dataNormalized, dimensionParams);
-    const labelPredicted = ys[ys.length - 1];
+    let ys = gessLabels(dataNormalized, dimensionParams);
 
+    ys = ys.reverse().slice(0, 32).reverse();
     const lastDate = data[data.length - 1][0];
-    const datePredicted = new Date(lastDate).setDate(
-      new Date(lastDate).getDate() + 1
-    );
+    const predictions = ys.map((e, i) => {
+      const datePredicted = new Date(lastDate).setDate(
+        new Date(lastDate).getDate() + i + 1
+      );
+      return [datePredicted, e];
+    });
+
     setSeries([
       ...newSeries,
       {
         type: "area",
         name: "Prediction",
-        data: [[datePredicted, labelPredicted]],
+        data: predictions,
       },
     ]);
   };
@@ -544,12 +544,11 @@ const Main = () => {
         <ul>
           <li>
             Create and validate model button : uses training and validation sets
-            (70% and 20%)
+            (70% and 20%).
           </li>
           <li>
-            Make predictions button : uses test set (10%) just to guess the next
-            period's value (We need to make a loop of predictions to get the
-            next 10 days)
+            Make predictions button : use test set (10%) just to guess the next
+            32 periods right away, you may zoom on the graph to see it.
           </li>
         </ul>
       </div>
