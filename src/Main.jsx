@@ -214,11 +214,14 @@ const Main = () => {
     }
 
     return {
-      dataNormalized: dataRaw.map((set) =>
-        set.map(
-          (e, i) => (e - dimensionParams[i].mean) / dimensionParams[i].std
-        )
-      ),
+      dataNormalized: dataRaw.map((set) => {
+        const baseValue =
+          (set[0] - dimensionParams[0].mean) / dimensionParams[0].std;
+        return set.map((e, i) => [
+          baseValue,
+          (e - dimensionParams[i].mean) / dimensionParams[i].std,
+        ]);
+      }),
       // https://www.tensorflow.org/tutorials/structured_data/time_series#normalize_the_data
       dimensionParams,
     };
@@ -231,12 +234,10 @@ const Main = () => {
   const makeDataset = async (range) => {
     const dataRange = sliceData(range).map((e) => e[1]);
     const { dataNormalized, dimensionParams } = normalizeData(dataRange);
-
-    // const dataset = tf.tensor2d(dataNormalized);
-    const xDataset = tf.data.array(
-      dataNormalized.slice(0, dataNormalized.length - 1)
-    );
-    const yDataset = tf.data.array(dataNormalized.map((e) => e[0])).skip(1);
+    const xDataset = tf.data
+      .array(dataNormalized)
+      .take(dataNormalized.length - 1);
+    const yDataset = tf.data.array(dataNormalized.map((e) => e[0][0])).skip(1);
     const xyDataset = tf.data.zip({ xs: xDataset, ys: yDataset }).batch(32);
     return {
       dataset: xyDataset,
@@ -254,15 +255,34 @@ const Main = () => {
       const model = tf.sequential();
 
       model.add(
-        tf.layers.dense({
-          units: 1,
-          inputShape: [8],
+        tf.layers.simpleRNN({
+          units: 20,
+          inputShape: [8, 2],
+          returnSequences: true,
         })
       );
 
-      const epochs = 10;
+      model.add(
+        tf.layers.simpleRNN({
+          units: 20,
+          returnSequences: true,
+        })
+      );
 
-      model.compile({ optimizer: "sgd", loss: "meanSquaredError" });
+      model.add(
+        tf.layers.dense({
+          units: 1,
+        })
+      );
+
+      // model.summary();
+      const epochs = 15;
+
+      model.compile({
+        optimizer: "sgd",
+        loss: "meanSquaredError",
+        metrics: ["accuracy"],
+      });
       setModelLogs([]);
       modelLogsRef.current = [];
       const history = await model.fitDataset(train, {
@@ -279,6 +299,7 @@ const Main = () => {
         model: model,
         stats: history,
       };
+
       setModelResultTraining(result);
     } catch (error) {
       throw error;
@@ -288,7 +309,11 @@ const Main = () => {
   };
 
   const gessLabels = (inputs, dimensionParams) => {
-    const xs = tf.tensor2d(inputs, [inputs.length, inputs[0].length]);
+    const xs = tf.tensor3d(inputs, [
+      inputs.length,
+      inputs[0].length,
+      inputs[0][0].length,
+    ]);
     let outputs = modelResultTraining.model.predict(xs);
     outputs = Array.from(outputs.dataSync());
     const results = unNormalizeData(outputs, dimensionParams[0]);
@@ -473,8 +498,8 @@ const Main = () => {
     <div>
       <h1>Welcome to Stock Market Predictions App with Tensorflow.js</h1>
       <h2>
-        Use the AI in the browser with your own computer's power, don't do this
-        with your smartphone ;)
+        Compile AI models with RNN Recurrent Neural Network in the browser with
+        your own computer's power
       </h2>
       <HighchartsReact highcharts={Highcharts} options={options} />
 
@@ -534,7 +559,7 @@ const Main = () => {
                 {sampleData.sampleDataNormalized.map((e1, i1) => (
                   <tr key={`sampleDataNormalized-row-${i1}`}>
                     {e1.map((e2, i2) => (
-                      <td key={`sampleDataNormalized-column-${i2}`}>{e2}</td>
+                      <td key={`sampleDataNormalized-column-${i2}`}>{e2[1]}</td>
                     ))}
                   </tr>
                 ))}
@@ -548,7 +573,7 @@ const Main = () => {
         </p>
         <ul>
           <li>
-            Create and validate model button : uses training and validation sets
+            Create and validate model button : use training and validation sets
             (70% and 20%).
           </li>
           <li>
@@ -558,13 +583,6 @@ const Main = () => {
           </li>
         </ul>
       </div>
-      <p>
-        Analysis : The model's loss value is very low (inferior 0.001) which
-        means indicators used are pretty reliable. But financial indicators all
-        depends of past periods, then predictions won't ever beat the market,
-        but would follow it up gently, keeping in memory how stock market
-        reacted previously.
-      </p>
     </div>
   );
 };
