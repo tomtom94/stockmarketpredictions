@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useState, useRef } from "react";
 import { hot } from "react-hot-loader/root";
 import Highcharts, { css } from "highcharts";
+import axios from "axios";
 import HighchartsReact from "highcharts-react-official";
 import * as tf from "@tensorflow/tfjs";
 import { SMA, RSI, stochastic } from "./technicalindicators";
@@ -21,34 +22,8 @@ const Main = () => {
   const [dataRsi14, setDataRsi14] = useState(null);
   const [dataRsi28, setDataRsi28] = useState(null);
   const [dataStochastic14, setDataStochastic14] = useState(null);
-  const [sampleData, setSampleData] = useState(null);
-
-  useEffect(() => {
-    const isSplitDataReady =
-      data.length > 0 &&
-      dataSma20 &&
-      dataSma50 &&
-      dataSma100 &&
-      dataRsi14 &&
-      dataRsi28 &&
-      dataStochastic14;
-    if (isSplitDataReady) {
-      const sampleDataRaw = sliceData([0.98, 1]).map((e) => e[1]);
-      const {
-        dataNormalized: sampleDataNormalized,
-        dimensionParams: sampleDimensionParams,
-      } = normalizeData(sampleDataRaw);
-      setSampleData({ sampleDataRaw, sampleDataNormalized });
-    }
-  }, [
-    data,
-    dataSma20,
-    dataSma50,
-    dataSma100,
-    dataRsi14,
-    dataRsi28,
-    dataStochastic14,
-  ]);
+  const [formError, setFormError] = useState(null);
+  const [symbol, setSymbol] = useState("AMZN");
 
   useEffect(() => {
     if (data.length) {
@@ -97,7 +72,7 @@ const Main = () => {
         (a, b) => new Date(a[0]) - new Date(b[0])
       )
     );
-  }, []);
+  }, [stockMarketData]);
 
   useEffect(() => {
     if (
@@ -118,7 +93,51 @@ const Main = () => {
     }
   }, [data, series]);
 
-  const sliceData = (trainingRange) => {
+  const handleSymbolChange = (event) => {
+    setSymbol(event.target.value);
+  };
+
+  const getNewStock = async (event) => {
+    event.preventDefault();
+
+    setFormError(null);
+    setInvesting({ start: 1000, end: null });
+    setDataSma20(null);
+    setDataSma50(null);
+    setDataSma100(null);
+    setDataRsi14(null);
+    setDataRsi28(null);
+    setDataStochastic14(null);
+    setModelResultTraining(null);
+    setModelLogs([]);
+    setIsModelTraining(false);
+    setSeries([]);
+    setData([]);
+    modelLogsRef.current = [];
+    try {
+      const { data } = await axios.get(
+        `https://www.alphavantage.co/query?${new URLSearchParams({
+          function: "TIME_SERIES_DAILY",
+          symbol,
+          outputsize: "full",
+          apikey: "73H4T3JL70SI8VON",
+        })}`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      setData(
+        Object.entries(data["Time Series (Daily)"]).sort(
+          (a, b) => new Date(a[0]) - new Date(b[0])
+        )
+      );
+    } catch (error) {
+      setFormError(error);
+    }
+  };
+
+  const splitData = (trainingRange) => {
     const descSma20 = JSON.parse(JSON.stringify(dataSma20)).reverse();
     const descSma50 = JSON.parse(JSON.stringify(dataSma50)).reverse();
     const descSma100 = JSON.parse(JSON.stringify(dataSma100)).reverse();
@@ -232,7 +251,7 @@ const Main = () => {
   };
 
   const makeDataset = async (range) => {
-    const dataRange = sliceData(range).map((e) => e[1]);
+    const dataRange = splitData(range).map((e) => e[1]);
     const { dataNormalized, dimensionParams } = normalizeData(dataRange);
     const xDataset = tf.data
       .array(dataNormalized)
@@ -322,7 +341,7 @@ const Main = () => {
 
   const makePredictions = () => {
     const newSeries = rebootSeries();
-    let xs = sliceData([0.9, 1]).reverse();
+    let xs = splitData([0.9, 1]).reverse();
     const chunks = [];
     for (let i = 0; i < xs.length - 1; i++) {
       chunks.push(xs.slice(i, i + 32));
@@ -393,7 +412,7 @@ const Main = () => {
       zoomType: "x",
     },
     title: {
-      text: `Amazon stock market`,
+      text: `Stock market`,
     },
     subtitle: {
       text:
@@ -498,9 +517,23 @@ const Main = () => {
     <div>
       <h1>Welcome to Stock Market Predictions App with Tensorflow.js</h1>
       <h2>
-        Compile AI models with RNN Recurrent Neural Network in the browser with
-        your own computer's power
+        Compile AI models with RNN Recurrent Neural Network in the browser
       </h2>
+
+      <form onSubmit={getNewStock}>
+        <label>
+          <span>Symbol </span>
+          <input
+            type="text"
+            name="symbol"
+            placeholder="IBM"
+            onChange={handleSymbolChange}
+            value={symbol}
+          ></input>
+        </label>
+        <button type="submit">Get New Stock data</button>
+      </form>
+      {formError && <p>{formError.message}</p>}
       <HighchartsReact highcharts={Highcharts} options={options} />
 
       <div style={{ margin: "10px 5px" }}>
@@ -537,34 +570,6 @@ const Main = () => {
         {modelLogs.length > 0 && (
           <>
             <HighchartsReact highcharts={Highcharts} options={options2} />
-          </>
-        )}
-        {sampleData && (
-          <>
-            <p>Exemple data raw below</p>
-            <table>
-              <tbody>
-                {sampleData.sampleDataRaw.map((e1, i1) => (
-                  <tr key={`sampleDataRaw-row-${i1}`}>
-                    {e1.map((e2, i2) => (
-                      <td key={`sampleDataRaw-column-${i2}`}>{e2}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p>Exemple data normalized below</p>
-            <table>
-              <tbody>
-                {sampleData.sampleDataNormalized.map((e1, i1) => (
-                  <tr key={`sampleDataNormalized-row-${i1}`}>
-                    {e1.map((e2, i2) => (
-                      <td key={`sampleDataNormalized-column-${i2}`}>{e2[1]}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </>
         )}
         <p>
