@@ -334,7 +334,7 @@ const Main = () => {
       );
 
       // model.summary();
-      const epochs = 10;
+      const epochs = 15;
 
       model.compile({
         optimizer: "adam",
@@ -389,7 +389,6 @@ const Main = () => {
     const predictions = [];
     const newChunks = chunks.map((e) => e.reverse()).reverse();
     let money = investing.start;
-    let _ys;
     newChunks.forEach((chunk, index, array) => {
       if (chunk.length < 32) {
         return;
@@ -406,12 +405,15 @@ const Main = () => {
           (nextChunk[nextChunk.length - 1][1][0] -
             chunk[chunk.length - 1][1][0]) /
           chunk[chunk.length - 1][1][0];
-        if (_ys) {
-          const predictionEvol = (ys - _ys) / _ys;
-          if (predictionEvol > 0) {
-            // Next day prediction is up then we buy all-in with the current capital
-            money = money * (1 + realEvol);
-          }
+        const predictionEvol =
+          (ys - chunk[chunk.length - 1][1][0]) / chunk[chunk.length - 1][1][0];
+        if (predictionEvol > 0) {
+          // Next day prediction is up then we buy all-in with the current capital
+          money = money * (1 + realEvol);
+        }
+        if (predictionEvol < 0) {
+          // Next day prediction is down then we short sale all-in with the current capital
+          money = money * (1 + -1 * realEvol);
         }
         datePredicted = new Date(nextChunk[nextChunk.length - 1][0]).getTime();
       } else {
@@ -420,7 +422,6 @@ const Main = () => {
           new Date(lastDate).getDate() + 1
         );
       }
-      _ys = ys;
       predictions.push([datePredicted, ys]);
     });
     setInvesting({ start: 1000, end: money });
