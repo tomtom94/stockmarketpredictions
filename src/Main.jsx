@@ -305,7 +305,7 @@ const Main = () => {
       // model.add(
       //   tf.layers.simpleRNN({
       //     units: 20,
-      //     inputShape: [10, 2],
+      //     inputShape: [9, 2],
       //     returnSequences: true,
       //   })
       // );
@@ -323,7 +323,7 @@ const Main = () => {
       // model.add(
       //   tf.layers.dense({
       //     units: 1,
-      //     inputShape: [10, 2],
+      //     inputShape: [9, 2],
       //   })
       // );
 
