@@ -334,7 +334,7 @@ const Main = () => {
       );
 
       // model.summary();
-      const epochs = 15;
+      const epochs = 10;
 
       model.compile({
         optimizer: "adam",
@@ -604,7 +604,7 @@ const Main = () => {
         </a>
         <p>
           {investing.end
-            ? `You invested ${investing.start}$, you get off with ${Math.round(
+            ? `You invested ${investing.start}$, you get out with ${Math.round(
                 investing.end
               )}$`
             : `You are investing ${investing.start}$, click on Make predictions button`}
