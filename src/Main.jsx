@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useState, useRef } from "react";
 import { hot } from "react-hot-loader/root";
-import Highcharts, { css } from "highcharts";
+import Highcharts from "highcharts/highstock";
 import axios from "axios";
 import HighchartsReact from "highcharts-react-official";
 import * as tf from "@tensorflow/tfjs";
@@ -77,17 +77,40 @@ const Main = () => {
   useEffect(() => {
     if (
       data.length &&
-      series.findIndex((serie) => serie.name === "Real stock price") === -1
+      series.findIndex((serie) => serie.name === "Stock value") === -1
     ) {
       setSeries([
         ...series,
         {
           type: "area",
-          name: "Real stock price",
+          id: "dataseries",
+          name: "Stock value",
           data: data.map((serie) => [
             new Date(serie[0]).getTime(),
             Number(serie[1]["4. close"]),
           ]),
+          gapSize: 5,
+          tooltip: {
+            valueDecimals: 2,
+          },
+          fillColor: {
+            linearGradient: {
+              x1: 0,
+              y1: 0,
+              x2: 0,
+              y2: 1,
+            },
+            stops: [
+              [0, Highcharts.getOptions().colors[0]],
+              [
+                1,
+                Highcharts.color(Highcharts.getOptions().colors[0])
+                  .setOpacity(0)
+                  .get("rgba"),
+              ],
+            ],
+          },
+          threshold: null,
         },
       ]);
     }
@@ -389,6 +412,9 @@ const Main = () => {
     const predictions = [];
     const newChunks = chunks.map((e) => e.reverse()).reverse();
     let money = investing.start;
+
+    const flagsSerie = [];
+    let _flag;
     newChunks.forEach((chunk, index, array) => {
       if (chunk.length < 32) {
         return;
@@ -401,20 +427,30 @@ const Main = () => {
       let datePredicted;
       if (array[index + 1]) {
         const nextChunk = array[index + 1];
-        const realEvol =
+        let realEvol =
           (nextChunk[nextChunk.length - 1][1][0] -
             chunk[chunk.length - 1][1][0]) /
           chunk[chunk.length - 1][1][0];
         const predictionEvol =
           (ys - chunk[chunk.length - 1][1][0]) / chunk[chunk.length - 1][1][0];
+        let flag;
         if (predictionEvol > 0) {
-          // Next day prediction is up then we buy all-in with the current capital
           money = money * (1 + realEvol);
+          flag = "buy";
         }
         if (predictionEvol < 0) {
-          // Next day prediction is down then we short sale all-in with the current capital
           money = money * (1 + -1 * realEvol);
+          flag = "sell";
         }
+
+        if (_flag !== flag) {
+          flagsSerie.push({
+            x: new Date(chunk[chunk.length - 1][0]).getTime(),
+            title: flag,
+          });
+        }
+
+        _flag = flag;
         datePredicted = new Date(nextChunk[nextChunk.length - 1][0]).getTime();
       } else {
         const lastDate = chunk[chunk.length - 1][0];
@@ -429,8 +465,15 @@ const Main = () => {
       ...newSeries,
       {
         type: "line",
-        name: "Predicted price",
+        name: "Predicted value",
         data: predictions,
+      },
+      {
+        type: "flags",
+        data: flagsSerie,
+        onSeries: "dataseries",
+        shape: "circlepin",
+        width: 16,
       },
     ]);
   };
@@ -438,72 +481,41 @@ const Main = () => {
   const rebootSeries = () => {
     setInvesting({ start: 1000, end: null });
     const serieIndex = series.findIndex(
-      (serie) => serie.name === "Predicted price"
+      (serie) => serie.name === "Predicted value"
     );
     let newSeries = series;
     if (serieIndex !== -1) {
-      newSeries = newSeries.splice(0, serieIndex);
+      newSeries = newSeries.splice(serieIndex, 2);
       setSeries([...newSeries]);
     }
     return newSeries;
   };
 
   const options = {
-    chart: {
-      zoomType: "x",
+    rangeSelector: {
+      selected: 1,
     },
+
     title: {
-      text: `Stock market`,
+      text: `${symbol} stock market`,
     },
-    subtitle: {
-      text:
-        document.ontouchstart === undefined
-          ? "Click and drag in the plot area to zoom in"
-          : "Pinch the chart to zoom in",
+
+    tooltip: {
+      style: {
+        width: "200px",
+      },
+      valueDecimals: 4,
+      shared: true,
+    },
+
+    yAxis: {
+      title: {
+        text: "stock value",
+      },
     },
     xAxis: {
       type: "datetime",
     },
-    yAxis: {
-      title: {
-        text: "dollar",
-      },
-    },
-    legend: {
-      enabled: false,
-    },
-    plotOptions: {
-      area: {
-        fillColor: {
-          linearGradient: {
-            x1: 0,
-            y1: 0,
-            x2: 0,
-            y2: 1,
-          },
-          stops: [
-            [0, Highcharts.getOptions().colors[0]],
-            [
-              1,
-              Highcharts.color(Highcharts.getOptions().colors[0])
-                .setOpacity(0)
-                .get("rgba"),
-            ],
-          ],
-        },
-        marker: {
-          radius: 2,
-        },
-        lineWidth: 1,
-        states: {
-          hover: {
-            lineWidth: 1,
-          },
-        },
-        threshold: null,
-      },
-    },
-
     series,
   };
 
@@ -513,7 +525,7 @@ const Main = () => {
     },
 
     subtitle: {
-      text: "Tensorflow.js model loss through training epoch",
+      text: "Tensorflow.js models loss through training",
     },
 
     yAxis: {
@@ -523,21 +535,14 @@ const Main = () => {
     },
 
     xAxis: {
-      accessibility: {
-        rangeDescription: "Epoch",
-      },
-    },
-
-    plotOptions: {
-      series: {
-        label: {
-          connectorAllowed: false,
-        },
+      title: {
+        text: "Epoch",
       },
     },
 
     series: [
       {
+        type: "line",
         name: "loss",
         data: modelLogs,
       },
@@ -576,7 +581,11 @@ const Main = () => {
         <button type="submit">Get New Stock data</button>
       </form>
       {formError && <p>{formError.message}</p>}
-      <HighchartsReact highcharts={Highcharts} options={options} />
+      <HighchartsReact
+        highcharts={Highcharts}
+        options={options}
+        constructorType={"stockChart"}
+      />
 
       <div style={{ margin: "10px 5px" }}>
         <button
@@ -622,7 +631,11 @@ const Main = () => {
         </ul>
         {modelLogs.length > 0 && (
           <>
-            <HighchartsReact highcharts={Highcharts} options={options2} />
+            <HighchartsReact
+              highcharts={Highcharts}
+              options={options2}
+              constructorType={"chart"}
+            />
           </>
         )}
         <p>
