@@ -12,6 +12,7 @@ For the moment just using a model with the following indicators :
 - RSI14 (Relative Strength Index 14 periods)
 - RSI28 (Relative Strength Index 28 periods)
 - stochastic14 (last 14 periods)
+- weekly seasonality
 
 Check out this app in live [stockmarketpredictions.herokuapp.com](https://stockmarketpredictions.herokuapp.com)
 

@@ -84,3 +84,9 @@ export const RSI = ({ period, data }) => {
     return [...acc, value];
   }, []);
 };
+
+export const seasonality = ({ element, fn, days }) => {
+  const timestamp = new Date(element[0]).getTime();
+  const value = Math[fn](timestamp * ((2 * Math.PI) / days));
+  return value;
+};

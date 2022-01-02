@@ -4,7 +4,7 @@ import Highcharts, { css } from "highcharts";
 import axios from "axios";
 import HighchartsReact from "highcharts-react-official";
 import * as tf from "@tensorflow/tfjs";
-import { SMA, RSI, stochastic } from "./technicalindicators";
+import { SMA, RSI, stochastic, seasonality } from "./technicalindicators";
 
 import stockMarketData from "./stockMarketData.json";
 
@@ -172,6 +172,8 @@ const Main = () => {
               descRsi14[index],
               descRsi28[index],
               descStochastic14[index],
+              seasonality({ element: curr, fn: "cos", days: 7 * 24 * 60 * 60 }),
+              seasonality({ element: curr, fn: "sin", days: 7 * 24 * 60 * 60 }),
             ],
           ],
         ];
@@ -236,19 +238,23 @@ const Main = () => {
       dataNormalized: dataRaw.map((set) => {
         const baseValue =
           (set[0] - dimensionParams[0].mean) / dimensionParams[0].std;
-        return set.map((e, i) => [
-          baseValue,
-          (e - dimensionParams[i].mean) / dimensionParams[i].std,
-        ]);
+        return set.reduce((acc, e, i) => {
+          if (i === 0) {
+            return acc;
+          }
+          return [
+            ...acc,
+            [baseValue, (e - dimensionParams[i].mean) / dimensionParams[i].std],
+          ];
+        }, []);
       }),
       // https://www.tensorflow.org/tutorials/structured_data/time_series#normalize_the_data
       dimensionParams,
     };
   };
 
-  const unNormalizeData = (dataRaw, dimensionParam) => {
-    return dataRaw.map((e) => e * dimensionParam.std + dimensionParam.mean);
-  };
+  const unNormalizeData = (dataRaw, dimensionParam) =>
+    dataRaw.map((e) => e * dimensionParam.std + dimensionParam.mean);
 
   const makeDataset = async (range) => {
     const dataRange = splitData(range).map((e) => e[1]);
@@ -256,8 +262,12 @@ const Main = () => {
     const xDataset = tf.data
       .array(dataNormalized)
       .take(dataNormalized.length - 1);
-    const yDataset = tf.data.array(dataNormalized.map((e) => e[0][0])).skip(1);
+    const yDataset = tf.data
+      .array(dataNormalized)
+      .map((e) => e[0][0])
+      .skip(1);
     const xyDataset = tf.data.zip({ xs: xDataset, ys: yDataset }).batch(32);
+
     return {
       dataset: xyDataset,
       dimensionParams,
@@ -273,20 +283,49 @@ const Main = () => {
       const { dataset: validate } = await makeDataset([0.7, 0.9]);
       const model = tf.sequential();
 
+      /**
+       * Solution 1 : use of RNN combine with lstmCell
+       */
+      const cells = [
+        tf.layers.lstmCell({ units: 9 }),
+        tf.layers.lstmCell({ units: 9 }),
+      ];
+
       model.add(
-        tf.layers.simpleRNN({
-          units: 20,
-          inputShape: [8, 2],
+        tf.layers.rnn({
+          cell: cells,
           returnSequences: true,
+          inputShape: [9, 2],
         })
       );
 
-      model.add(
-        tf.layers.simpleRNN({
-          units: 20,
-          returnSequences: true,
-        })
-      );
+      /**
+       * Solution 2 : just use of simpleRNN
+       */
+      // model.add(
+      //   tf.layers.simpleRNN({
+      //     units: 20,
+      //     inputShape: [10, 2],
+      //     returnSequences: true,
+      //   })
+      // );
+
+      // model.add(
+      //   tf.layers.simpleRNN({
+      //     units: 20,
+      //     returnSequences: true,
+      //   })
+      // );
+
+      /**
+       * Solution 3 : just use a linear layer
+       */
+      // model.add(
+      //   tf.layers.dense({
+      //     units: 1,
+      //     inputShape: [10, 2],
+      //   })
+      // );
 
       model.add(
         tf.layers.dense({
@@ -295,10 +334,10 @@ const Main = () => {
       );
 
       // model.summary();
-      const epochs = 15;
+      const epochs = 10;
 
       model.compile({
-        optimizer: "sgd",
+        optimizer: "adam",
         loss: "meanSquaredError",
         metrics: ["accuracy"],
       });
@@ -370,6 +409,7 @@ const Main = () => {
         if (_ys) {
           const predictionEvol = (ys - _ys) / _ys;
           if (predictionEvol > 0) {
+            // Next day prediction is up then we buy all-in with the current capital
             money = money * (1 + realEvol);
           }
         }
@@ -517,7 +557,8 @@ const Main = () => {
     <div>
       <h1>Welcome to Stock Market Predictions App with Tensorflow.js</h1>
       <h2>
-        Compile AI models with RNN Recurrent Neural Network in the browser
+        Compile AI models with RNN Recurrent Neural Network of LSTM Long-Short
+        Term Memory layers in the browser
       </h2>
 
       <form onSubmit={getNewStock}>
@@ -567,6 +608,17 @@ const Main = () => {
               )}$`
             : `You are investing ${investing.start}$, click on Make predictions button`}
         </p>
+        <p>The financial indicators used are the followings :</p>
+        <ul>
+          <li>daily volume </li>
+          <li>SMA20 (Simple Moving Average 20 periods) </li>
+          <li>SMA50 (Simple Moving Average 50 periods) </li>
+          <li>SMA100 (Simple Moving Average 100 periods) </li>
+          <li>RSI14 (Relative Strength Index 14 periods) </li>
+          <li>RSI28 (Relative Strength Index 28 periods) </li>
+          <li>stochastic14 (last 14 periods) </li>
+          <li>weekly seasonality</li>
+        </ul>
         {modelLogs.length > 0 && (
           <>
             <HighchartsReact highcharts={Highcharts} options={options2} />
@@ -582,9 +634,9 @@ const Main = () => {
             (70% and 20%).
           </li>
           <li>
-            Make predictions button : use test set (10%). Each day we guess
-            tomorrow's value thanks to the last 32 periods. (you may need to
-            zoom on the graph)
+            Make predictions button : use test set (10%). Every day we predict
+            the day after's value thanks in accordance to the chunks' previous
+            32 periods. (you may need to zoom on the graph)
           </li>
         </ul>
       </div>
