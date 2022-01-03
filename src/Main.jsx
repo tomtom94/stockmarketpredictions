@@ -493,7 +493,7 @@ const Main = () => {
 
   const options = {
     rangeSelector: {
-      selected: 1,
+      selected: 4,
     },
 
     title: {
@@ -581,11 +581,13 @@ const Main = () => {
         <button type="submit">Get New Stock data</button>
       </form>
       {formError && <p>{formError.message}</p>}
-      <HighchartsReact
-        highcharts={Highcharts}
-        options={options}
-        constructorType={"stockChart"}
-      />
+      {series.length > 0 && (
+        <HighchartsReact
+          highcharts={Highcharts}
+          options={options}
+          constructorType={"stockChart"}
+        />
+      )}
 
       <div style={{ margin: "10px 5px" }}>
         <button

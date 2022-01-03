@@ -45,7 +45,7 @@ Run dev mode with
 npm run dev
 ```
 
-it's gonna start an hot dev middleware with an express server ;) ready to work `http://localhost:3000`
+it's gonna start an hot dev middleware with an express server ;) ready to work `http://localhost:3030`
 
 ### Start in production mode With Node.js
 
@@ -57,7 +57,7 @@ npm install
 npm run start
 ```
 
-it's gonna build in `dist/` and run the app in production mode with an express server `http://localhost:3000` or environment port used.
+it's gonna build in `dist/` and run the app in production mode with an express server `http://localhost:3030` or environment port used.
 
 ## Licence
 

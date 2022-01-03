@@ -8,7 +8,7 @@ const webpackConfig = require("../webpack/webpack.dev");
 
 const { compilerListener, paths } = require("./utils");
 
-const PORT = 3000;
+const PORT = 3030;
 
 const app = express();
 
