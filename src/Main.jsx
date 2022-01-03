@@ -485,7 +485,7 @@ const Main = () => {
     );
     let newSeries = series;
     if (serieIndex !== -1) {
-      newSeries = newSeries.splice(serieIndex, 2);
+      newSeries.splice(serieIndex, 2);
       setSeries([...newSeries]);
     }
     return newSeries;
