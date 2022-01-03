@@ -357,7 +357,7 @@ const Main = () => {
       );
 
       // model.summary();
-      const epochs = 10;
+      const epochs = 15;
 
       model.compile({
         optimizer: "adam",
