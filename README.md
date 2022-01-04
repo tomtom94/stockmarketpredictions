@@ -54,10 +54,16 @@ npm install
 ```
 
 ```npm
+npm run build
+```
+
+it's gonna build in `dist/`
+
+```npm
 npm run start
 ```
 
-it's gonna build in `dist/` and run the app in production mode with an express server `http://localhost:3030` or environment port used.
+ It's gonna run the app in production mode with an express server `http://localhost:3030` or environment port used.
 
 ## Licence
 
