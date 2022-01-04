@@ -651,8 +651,8 @@ const Main = () => {
           </li>
           <li>
             Make predictions button : use test set (10%). Every day we predict
-            the day after's value thanks in accordance to the chunks' previous
-            32 periods. (you may need to zoom on the graph)
+            the day after's value in accordance to the chunks' previous 32
+            periods. (you may need to zoom on the graph)
           </li>
         </ul>
       </div>
