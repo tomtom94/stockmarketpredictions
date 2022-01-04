@@ -9,6 +9,7 @@ import { SMA, RSI, stochastic, seasonality } from "./technicalindicators";
 import stockMarketData from "./stockMarketData.json";
 
 const Main = () => {
+  const epochs = 20;
   const [data, setData] = useState([]);
   const [series, setSeries] = useState([]);
   const [isModelTraining, setIsModelTraining] = useState(false);
@@ -312,6 +313,7 @@ const Main = () => {
       const cells = [
         tf.layers.lstmCell({ units: 9 }),
         tf.layers.lstmCell({ units: 9 }),
+        tf.layers.lstmCell({ units: 3 }),
       ];
 
       model.add(
@@ -357,7 +359,6 @@ const Main = () => {
       );
 
       // model.summary();
-      const epochs = 15;
 
       model.compile({
         optimizer: "adam",
@@ -411,10 +412,10 @@ const Main = () => {
 
     const predictions = [];
     const newChunks = chunks.map((e) => e.reverse()).reverse();
-    let money = investing.start;
-
     const flagsSerie = [];
-    let _flag;
+    let _money = investing.start;
+    let _flag = { label: null, type: null };
+    let _value;
     newChunks.forEach((chunk, index, array) => {
       if (chunk.length < 32) {
         return;
@@ -427,29 +428,38 @@ const Main = () => {
       let datePredicted;
       if (array[index + 1]) {
         const nextChunk = array[index + 1];
-        let realEvol =
-          (nextChunk[nextChunk.length - 1][1][0] -
-            chunk[chunk.length - 1][1][0]) /
-          chunk[chunk.length - 1][1][0];
         const predictionEvol =
           (ys - chunk[chunk.length - 1][1][0]) / chunk[chunk.length - 1][1][0];
-        let flag;
+        let flag = {};
         if (predictionEvol > 0) {
-          money = money * (1 + realEvol);
-          flag = "buy";
+          flag.type = "buy";
         }
         if (predictionEvol < 0) {
-          money = money * (1 + -1 * realEvol);
-          flag = "sell";
+          flag.type = "sell";
         }
+        if (_flag.type !== flag.type) {
+          if (!_value) {
+            _value = chunk[chunk.length - 1][1][0];
+          }
+          let realEvolv2 = (chunk[chunk.length - 1][1][0] - _value) / _value;
 
-        if (_flag !== flag) {
+          if (_flag.type === "buy") {
+            _money = _money * (1 + realEvolv2);
+          }
+          if (_flag.type === "sell") {
+            _money = _money * (1 + -1 * realEvolv2);
+          }
+          _value = chunk[chunk.length - 1][1][0];
+          flag.label = `Investing ${Math.round(_money)}$ at value ${
+            chunk[chunk.length - 1][1][0]
+          }`;
           flagsSerie.push({
             x: new Date(chunk[chunk.length - 1][0]).getTime(),
-            title: flag,
+            title: flag.type,
+            text: flag.label,
+            color: flag.type === "buy" ? "green" : "red",
           });
         }
-
         _flag = flag;
         datePredicted = new Date(nextChunk[nextChunk.length - 1][0]).getTime();
       } else {
@@ -460,7 +470,7 @@ const Main = () => {
       }
       predictions.push([datePredicted, ys]);
     });
-    setInvesting({ start: 1000, end: money });
+    setInvesting({ start: 1000, end: _money });
     setSeries([
       ...newSeries,
       {
@@ -473,7 +483,7 @@ const Main = () => {
         data: flagsSerie,
         onSeries: "dataseries",
         shape: "circlepin",
-        width: 16,
+        width: 18,
       },
     ]);
   };
@@ -538,6 +548,8 @@ const Main = () => {
       title: {
         text: "Epoch",
       },
+      min: 1,
+      max: epochs,
     },
 
     series: [
