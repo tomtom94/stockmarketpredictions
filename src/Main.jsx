@@ -24,7 +24,41 @@ const Main = () => {
   const [dataRsi28, setDataRsi28] = useState(null);
   const [dataStochastic14, setDataStochastic14] = useState(null);
   const [formError, setFormError] = useState(null);
-  const [symbol, setSymbol] = useState("AMZN");
+  const [symbol, setSymbol] = useState("");
+  const [sampleData, setSampleData] = useState(null);
+  const [graphTitle, setGraphTitle] = useState(null);
+
+  useEffect(() => {
+    const areAllDataReady =
+      data.length > 0 &&
+      dataSma20 &&
+      dataSma50 &&
+      dataSma100 &&
+      dataRsi14 &&
+      dataRsi28 &&
+      dataStochastic14;
+    if (areAllDataReady) {
+      const sampleDataRaw = splitData([0, 1]).map((e) => e[1]);
+      const {
+        dataNormalized: sampleDataNormalized,
+        dimensionParams: sampleDimensionParams,
+      } = normalizeData(sampleDataRaw);
+      setSampleData({
+        sampleDataRaw: JSON.parse(JSON.stringify(sampleDataRaw))
+          .reverse()
+          .filter((e, i) => i < 5),
+        sampleDimensionParams,
+      });
+    }
+  }, [
+    data,
+    dataSma20,
+    dataSma50,
+    dataSma100,
+    dataRsi14,
+    dataRsi28,
+    dataStochastic14,
+  ]);
 
   useEffect(() => {
     if (data.length) {
@@ -73,6 +107,7 @@ const Main = () => {
         (a, b) => new Date(a[0]) - new Date(b[0])
       )
     );
+    setGraphTitle(stockMarketData["Meta Data"]["2. Symbol"]);
   }, [stockMarketData]);
 
   useEffect(() => {
@@ -123,7 +158,11 @@ const Main = () => {
 
   const getNewStock = async (event) => {
     event.preventDefault();
-
+    if (!symbol) {
+      return;
+    }
+    setGraphTitle(null);
+    setSampleData(null);
     setFormError(null);
     setInvesting({ start: 1000, end: null });
     setDataSma20(null);
@@ -156,6 +195,7 @@ const Main = () => {
           (a, b) => new Date(a[0]) - new Date(b[0])
         )
       );
+      setGraphTitle(data["Meta Data"]["2. Symbol"]);
     } catch (error) {
       setFormError(error);
     }
@@ -204,19 +244,10 @@ const Main = () => {
       }, [])
       .reverse();
     const [bottom, top] = trainingRange;
-    let chunk = [];
-    if (bottom < 1 && top <= 1) {
-      chunk = dataRaw.slice(
-        bottom === 0 ? 0 : Math.ceil(bottom * data.length),
-        top === 1 ? dataRaw.length : Math.floor(top * data.length)
-      );
-    } else {
-      if (bottom && !top) {
-        chunk = dataRaw.slice(bottom);
-      } else {
-        chunk = dataRaw.slice(bottom, top);
-      }
-    }
+    const chunk = dataRaw.slice(
+      bottom === 0 ? 0 : Math.ceil(bottom * data.length),
+      top === 1 ? dataRaw.length : Math.floor(top * data.length)
+    );
     return chunk;
   };
 
@@ -233,16 +264,16 @@ const Main = () => {
         const mean =
           dimension.reduce((acc, curr) => acc + curr, 0) / dimension.length;
         const min = dimension.reduce((acc, curr) => {
-          if (curr > acc) {
-            return acc;
+          if (acc === null || curr < acc) {
+            return curr;
           }
-          return curr;
+          return acc;
         }, null);
         const max = dimension.reduce((acc, curr) => {
-          if (curr < acc) {
-            return acc;
+          if (acc === null || curr > acc) {
+            return curr;
           }
-          return curr;
+          return acc;
         }, null);
         return {
           min,
@@ -291,7 +322,11 @@ const Main = () => {
       .map((e) => e[0][0])
       .skip(1);
     const xyDataset = tf.data.zip({ xs: xDataset, ys: yDataset }).batch(32);
-
+    // const datasetLogs = [];
+    // await xyDataset.forEachAsync((e) => {
+    //   datasetLogs.push(e);
+    // });
+    // console.log("datasetLogs", datasetLogs);
     return {
       dataset: xyDataset,
       dimensionParams,
@@ -315,6 +350,7 @@ const Main = () => {
         tf.layers.lstmCell({ units: 9 }),
         tf.layers.lstmCell({ units: 3 }),
       ];
+      // https://stackoverflow.com/a/38086903/10294022
 
       model.add(
         tf.layers.rnn({
@@ -507,7 +543,7 @@ const Main = () => {
     },
 
     title: {
-      text: `${symbol} stock market`,
+      text: `${graphTitle} stock market`,
     },
 
     tooltip: {
@@ -570,7 +606,6 @@ const Main = () => {
       ],
     },
   };
-
   return (
     <div>
       <h1>Welcome to Stock Market Predictions App with Tensorflow.js</h1>
@@ -585,7 +620,7 @@ const Main = () => {
           <input
             type="text"
             name="symbol"
-            placeholder="IBM"
+            placeholder="BTCUSD"
             onChange={handleSymbolChange}
             value={symbol}
           ></input>
@@ -594,80 +629,143 @@ const Main = () => {
       </form>
       {formError && <p>{formError.message}</p>}
       {series.length > 0 && (
-        <HighchartsReact
-          highcharts={Highcharts}
-          options={options}
-          constructorType={"stockChart"}
-        />
-      )}
+        <>
+          <HighchartsReact
+            highcharts={Highcharts}
+            options={options}
+            constructorType={"stockChart"}
+          />
 
-      <div style={{ margin: "10px 5px" }}>
-        <button
-          onClick={createModel}
-          type="button"
-          disabled={isModelTraining}
-          style={{ fontSize: 16, marginRight: 5 }}
-        >
-          {isModelTraining ? "Model is training" : "Create and validate model"}
-        </button>
-        <button
-          onClick={makePredictions}
-          type="button"
-          disabled={!modelResultTraining}
-          style={{ fontSize: 16, marginRight: 5 }}
-        >
-          Make predictions
-        </button>
-        <a
-          href="https://github.com/tomtom94/stockmarketpredictions"
-          target="_blank"
-          style={{ fontSize: 16, margin: 5, textDecoration: "none" }}
-        >
-          More details on Github
-        </a>
-        <p>
-          {investing.end
-            ? `You invested ${investing.start}$, you get out with ${Math.round(
-                investing.end
-              )}$`
-            : `You are investing ${investing.start}$, click on Make predictions button`}
-        </p>
-        <p>The financial indicators used are the followings :</p>
-        <ul>
-          <li>daily volume </li>
-          <li>SMA20 (Simple Moving Average 20 periods) </li>
-          <li>SMA50 (Simple Moving Average 50 periods) </li>
-          <li>SMA100 (Simple Moving Average 100 periods) </li>
-          <li>RSI14 (Relative Strength Index 14 periods) </li>
-          <li>RSI28 (Relative Strength Index 28 periods) </li>
-          <li>stochastic14 (last 14 periods) </li>
-          <li>weekly seasonality</li>
-        </ul>
-        {modelLogs.length > 0 && (
-          <>
-            <HighchartsReact
-              highcharts={Highcharts}
-              options={options2}
-              constructorType={"chart"}
-            />
-          </>
-        )}
-        <p>
-          We use a (70%, 20%, 10%) periods split for the training, validation,
-          and test sets, via batch of 32 periods.
-        </p>
-        <ul>
-          <li>
-            Create and validate model button : use training and validation sets
-            (70% and 20%).
-          </li>
-          <li>
-            Make predictions button : use test set (10%). Every day we predict
-            the day after's value in accordance to the chunks' previous 32
-            periods. (you may need to zoom on the graph)
-          </li>
-        </ul>
-      </div>
+          <div style={{ margin: "10px 5px" }}>
+            <button
+              onClick={createModel}
+              type="button"
+              disabled={isModelTraining}
+              style={{ fontSize: 16, marginRight: 5 }}
+            >
+              {isModelTraining
+                ? "Model is training"
+                : "Create and validate model"}
+            </button>
+            <button
+              onClick={makePredictions}
+              type="button"
+              disabled={!modelResultTraining}
+              style={{ fontSize: 16, marginRight: 5 }}
+            >
+              Make predictions
+            </button>
+            <a
+              href="https://github.com/tomtom94/stockmarketpredictions"
+              target="_blank"
+              style={{ fontSize: 16, margin: 5, textDecoration: "none" }}
+            >
+              More details on Github
+            </a>
+            {modelLogs.length > 0 && (
+              <>
+                <p>
+                  {investing.end
+                    ? `You invested ${
+                        investing.start
+                      }$, you get out with ${Math.round(investing.end)}$`
+                    : `You are investing ${investing.start}$, click on Make predictions button`}
+                </p>
+                <p>The financial indicators used are the followings :</p>
+                <ul>
+                  <li>daily volume </li>
+                  <li>SMA20 (Simple Moving Average 20 periods) </li>
+                  <li>SMA50 (Simple Moving Average 50 periods) </li>
+                  <li>SMA100 (Simple Moving Average 100 periods) </li>
+                  <li>RSI14 (Relative Strength Index 14 periods) </li>
+                  <li>RSI28 (Relative Strength Index 28 periods) </li>
+                  <li>stochastic14 (last 14 periods) </li>
+                  <li>weekly seasonality</li>
+                </ul>
+                <HighchartsReact
+                  highcharts={Highcharts}
+                  options={options2}
+                  constructorType={"chart"}
+                />
+              </>
+            )}
+            <p>
+              We use a (70%, 20%, 10%) periods split for training, validation,
+              and test set, via batch of 32 periods.
+            </p>
+            <ul>
+              <li>
+                Create and validate model button : use training and validation
+                set (70% and 20%).
+              </li>
+              <li>
+                Make predictions button : use test set (10%). Every day we
+                predict the day after's value in accordance to the chunks'
+                previous 32 periods. (you may need to zoom on the graph)
+              </li>
+            </ul>
+            {sampleData && (
+              /**
+               * When you are developing and changing things
+               * you must put this html in commentary to avoid trouble
+               */
+              <>
+                <br />
+                <p>Describe the whole data below</p>
+                <table border={1}>
+                  <thead>
+                    <tr>
+                      <th>min</th>
+                      <th>max</th>
+                      <th>mean</th>
+                      <th>std</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(sampleData.sampleDimensionParams).map(
+                      (e1, i1) => (
+                        <tr key={`sampleDimensionParams-row-${i1}`}>
+                          {Object.values(e1[1]).map((e2, i2) => (
+                            <td key={`sampleDimensionParams-column-${i2}`}>
+                              {e2}
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+                <p>Example data raw below</p>
+                <table border={1}>
+                  <thead>
+                    <tr>
+                      <th>Stock value</th>
+                      <th>Volume</th>
+                      <th>SMA20</th>
+                      <th>SMA50</th>
+                      <th>SMA100</th>
+                      <th>RSI14</th>
+                      <th>RSI28</th>
+                      <th>Stochastic14</th>
+                      <th>Weekly seasonality cosinus</th>
+                      <th>Weekly seasonality sinus</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sampleData.sampleDataRaw.map((e1, i1) => (
+                      <tr key={`sampleDataRaw-row-${i1}`}>
+                        {e1.map((e2, i2) => (
+                          <td key={`sampleDataRaw-column-${i2}`}>{e2}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };
