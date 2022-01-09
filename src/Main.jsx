@@ -9,7 +9,9 @@ import { SMA, RSI, stochastic, seasonality } from "./technicalindicators";
 import stockMarketData from "./stockMarketData.json";
 
 const Main = () => {
-  const epochs = 20;
+  const epochs = 7;
+  const timeserieSize = 12;
+  const batchSize = 32;
   const [data, setData] = useState([]);
   const [series, setSeries] = useState([]);
   const [isModelTraining, setIsModelTraining] = useState(false);
@@ -229,12 +231,15 @@ const Main = () => {
             curr[0],
             [
               Number(curr[1]["4. close"]),
+              Number(curr[1]["1. open"]),
+              Number(curr[1]["2. high"]),
+              Number(curr[1]["3. low"]),
               Number(curr[1]["5. volume"]),
-              descSma20[index],
+              // descSma20[index],
               descSma50[index],
               descSma100[index],
               descRsi14[index],
-              descRsi28[index],
+              // descRsi28[index],
               descStochastic14[index],
               seasonality({ element: curr, fn: "cos", days: 7 * 24 * 60 * 60 }),
               seasonality({ element: curr, fn: "sin", days: 7 * 24 * 60 * 60 }),
@@ -249,6 +254,23 @@ const Main = () => {
       top === 1 ? dataRaw.length : Math.floor(top * data.length)
     );
     return chunk;
+  };
+
+  const createTimeseriesDimensionForRNN = (inputs) => {
+    inputs.reverse();
+    const chunks = [];
+    for (let i = 0; i < inputs.length - 1; i++) {
+      chunks.push(inputs.slice(i, i + timeserieSize));
+    }
+
+    const newChunks = chunks.map((e) => e.reverse()).reverse();
+    const timeseriesChunks = [];
+    newChunks.forEach((chunk) => {
+      if (chunk.length === timeserieSize) {
+        timeseriesChunks.push(chunk);
+      }
+    });
+    return timeseriesChunks;
   };
 
   const normalizeData = (dataRaw, params) => {
@@ -290,20 +312,14 @@ const Main = () => {
     }
 
     return {
-      dataNormalized: dataRaw.map((set) => {
-        const baseValue =
-          (set[0] - dimensionParams[0].mean) / dimensionParams[0].std;
-        return set.reduce((acc, e, i) => {
-          if (i === 0) {
-            return acc;
-          }
-          return [
-            ...acc,
-            [baseValue, (e - dimensionParams[i].mean) / dimensionParams[i].std],
-          ];
-        }, []);
-      }),
-      // https://www.tensorflow.org/tutorials/structured_data/time_series#normalize_the_data
+      dataNormalized: createTimeseriesDimensionForRNN(
+        dataRaw.map((set) =>
+          set.map(
+            (e, i) => (e - dimensionParams[i].mean) / dimensionParams[i].std
+            // https://www.tensorflow.org/tutorials/structured_data/time_series#normalize_the_data
+          )
+        )
+      ),
       dimensionParams,
     };
   };
@@ -319,9 +335,12 @@ const Main = () => {
       .take(dataNormalized.length - 1);
     const yDataset = tf.data
       .array(dataNormalized)
-      .map((e) => e[0][0])
+      .map((e) => e[e.length - 1][0])
       .skip(1);
-    const xyDataset = tf.data.zip({ xs: xDataset, ys: yDataset }).batch(32);
+    const xyDataset = tf.data
+      .zip({ xs: xDataset, ys: yDataset })
+      .batch(batchSize)
+      .shuffle(batchSize);
     // const datasetLogs = [];
     // await xyDataset.forEachAsync((e) => {
     //   datasetLogs.push(e);
@@ -338,55 +357,23 @@ const Main = () => {
       rebootSeries();
       setIsModelTraining(true);
       setModelResultTraining(null);
-      const { dataset: train, dimensionParams } = await makeDataset([0, 0.7]);
-      const { dataset: validate } = await makeDataset([0.7, 0.9]);
+      const { dataset: train, dimensionParams } = await makeDataset([0, 0.84]);
+      const { dataset: validate } = await makeDataset([0.84, 0.92]);
       const model = tf.sequential();
 
-      /**
-       * Solution 1 : use of RNN combine with lstmCell
-       */
       const cells = [
-        tf.layers.lstmCell({ units: 9 }),
-        tf.layers.lstmCell({ units: 9 }),
-        tf.layers.lstmCell({ units: 3 }),
+        tf.layers.lstmCell({ units: 16 }),
+        tf.layers.lstmCell({ units: 16 }),
+        tf.layers.lstmCell({ units: 16 }),
       ];
-      // https://stackoverflow.com/a/38086903/10294022
 
       model.add(
         tf.layers.rnn({
           cell: cells,
+          inputShape: [timeserieSize, 11],
           returnSequences: true,
-          inputShape: [9, 2],
         })
       );
-
-      /**
-       * Solution 2 : just use of simpleRNN
-       */
-      // model.add(
-      //   tf.layers.simpleRNN({
-      //     units: 20,
-      //     inputShape: [9, 2],
-      //     returnSequences: true,
-      //   })
-      // );
-
-      // model.add(
-      //   tf.layers.simpleRNN({
-      //     units: 20,
-      //     returnSequences: true,
-      //   })
-      // );
-
-      /**
-       * Solution 3 : just use a linear layer
-       */
-      // model.add(
-      //   tf.layers.dense({
-      //     units: 1,
-      //     inputShape: [9, 2],
-      //   })
-      // );
 
       model.add(
         tf.layers.dense({
@@ -440,71 +427,64 @@ const Main = () => {
 
   const makePredictions = () => {
     const newSeries = rebootSeries();
-    let xs = splitData([0.9, 1]).reverse();
-    const chunks = [];
-    for (let i = 0; i < xs.length - 1; i++) {
-      chunks.push(xs.slice(i, i + 32));
-    }
-
+    const xs = splitData([0.92, 1]);
+    const timeseriesChunks = createTimeseriesDimensionForRNN(xs);
     const predictions = [];
-    const newChunks = chunks.map((e) => e.reverse()).reverse();
     const flagsSerie = [];
     let _money = investing.start;
     let _flag = { label: null, type: null };
     let _value;
-    newChunks.forEach((chunk, index, array) => {
-      if (chunk.length < 32) {
-        return;
-      }
-      const { dataNormalized, dimensionParams } = normalizeData(
-        chunk.map((e) => e[1])
-      );
-      let ys = gessLabels(dataNormalized, dimensionParams);
-      ys = ys[ys.length - 1];
-      let datePredicted;
-      if (array[index + 1]) {
-        const nextChunk = array[index + 1];
-        const predictionEvol =
-          (ys - chunk[chunk.length - 1][1][0]) / chunk[chunk.length - 1][1][0];
-        let flag = {};
-        if (predictionEvol > 0) {
-          flag.type = "buy";
-        }
-        if (predictionEvol < 0) {
-          flag.type = "sell";
-        }
-        if (_flag.type !== flag.type) {
-          if (!_value) {
-            _value = chunk[chunk.length - 1][1][0];
-          }
-          let realEvolv2 = (chunk[chunk.length - 1][1][0] - _value) / _value;
+    let _ys;
 
-          if (_flag.type === "buy") {
-            _money = _money * (1 + realEvolv2);
-          }
-          if (_flag.type === "sell") {
-            _money = _money * (1 + -1 * realEvolv2);
-          }
-          _value = chunk[chunk.length - 1][1][0];
-          flag.label = `Investing ${Math.round(_money)}$ at value ${
-            chunk[chunk.length - 1][1][0]
-          }`;
-          flagsSerie.push({
-            x: new Date(chunk[chunk.length - 1][0]).getTime(),
-            title: flag.type,
-            text: flag.label,
-            color: flag.type === "buy" ? "green" : "red",
-          });
-        }
-        _flag = flag;
-        datePredicted = new Date(nextChunk[nextChunk.length - 1][0]).getTime();
-      } else {
-        const lastDate = chunk[chunk.length - 1][0];
-        datePredicted = new Date(lastDate).setDate(
-          new Date(lastDate).getDate() + 1
+    timeseriesChunks.forEach((chunk, index, array) => {
+      const prevChunk = array[index - 1];
+      if (prevChunk) {
+        const { dataNormalized, dimensionParams } = normalizeData(
+          chunk.map((e) => e[1])
         );
+        let ys = gessLabels(dataNormalized, dimensionParams);
+        ys = ys[ys.length - 1];
+        const nextChunk = array[index + 1];
+        if (_ys && nextChunk) {
+          const predEvol = (ys - _ys) / _ys;
+          let flag = {};
+          if (predEvol > 0) {
+            flag.type = "buy";
+          }
+          if (predEvol < 0) {
+            flag.type = "sell";
+          }
+          if (_flag.type !== flag.type) {
+            if (!_value) {
+              _value = prevChunk[prevChunk.length - 1][1][0];
+            }
+            let realEvolv2 =
+              (prevChunk[prevChunk.length - 1][1][0] - _value) / _value;
+
+            if (_flag.type === "buy") {
+              _money = _money * (1 + realEvolv2);
+            }
+            if (_flag.type === "sell") {
+              _money = _money * (1 + -1 * realEvolv2);
+            }
+            _value = prevChunk[prevChunk.length - 1][1][0];
+            flag.label = `Investing ${Math.round(_money)}$ at value ${
+              prevChunk[prevChunk.length - 1][1][0]
+            }`;
+            flagsSerie.push({
+              x: new Date(prevChunk[prevChunk.length - 1][0]).getTime(),
+              title: flag.type,
+              text: flag.label,
+              color: flag.type === "buy" ? "green" : "red",
+            });
+          }
+          _flag = flag;
+        }
+        let datePredicted = new Date(chunk[chunk.length - 1][0]).getTime();
+
+        predictions.push([datePredicted, ys]);
+        _ys = ys;
       }
-      predictions.push([datePredicted, ys]);
     });
     setInvesting({ start: 1000, end: _money });
     setSeries([
@@ -673,14 +653,16 @@ const Main = () => {
                 </p>
                 <p>The financial indicators used are the followings :</p>
                 <ul>
-                  <li>daily volume </li>
-                  <li>SMA20 (Simple Moving Average 20 periods) </li>
+                  <li>Close value </li>
+                  <li>Open value </li>
+                  <li>Daily high value </li>
+                  <li>Daily low value </li>
+                  <li>Daily volume </li>
                   <li>SMA50 (Simple Moving Average 50 periods) </li>
                   <li>SMA100 (Simple Moving Average 100 periods) </li>
                   <li>RSI14 (Relative Strength Index 14 periods) </li>
-                  <li>RSI28 (Relative Strength Index 28 periods) </li>
                   <li>stochastic14 (last 14 periods) </li>
-                  <li>weekly seasonality</li>
+                  <li>Weekly seasonality</li>
                 </ul>
                 <HighchartsReact
                   highcharts={Highcharts}
@@ -690,18 +672,18 @@ const Main = () => {
               </>
             )}
             <p>
-              We use a (70%, 20%, 10%) periods split for training, validation,
-              and test set, via batch of 32 periods.
+              {`We use a (84%, 8%, 8%) periods split for training, validation,
+              and test set, via batch of ${batchSize}.`}
             </p>
             <ul>
               <li>
                 Create and validate model button : use training and validation
-                set (70% and 20%).
+                set (84% and 8%).
               </li>
               <li>
-                Make predictions button : use test set (10%). Every day we
+                {`Make predictions button : use test set (8%). Every day we
                 predict the day after's value in accordance to the chunks'
-                previous 32 periods. (you may need to zoom on the graph)
+                previous ${timeserieSize} periods. (you may need to zoom on the graph)`}
               </li>
             </ul>
             {sampleData && (
@@ -739,13 +721,14 @@ const Main = () => {
                 <table border={1}>
                   <thead>
                     <tr>
-                      <th>Stock value</th>
+                      <th>Close value</th>
+                      <th>Open value</th>
+                      <th>High</th>
+                      <th>Low</th>
                       <th>Volume</th>
-                      <th>SMA20</th>
                       <th>SMA50</th>
                       <th>SMA100</th>
                       <th>RSI14</th>
-                      <th>RSI28</th>
                       <th>Stochastic14</th>
                       <th>Weekly seasonality cosinus</th>
                       <th>Weekly seasonality sinus</th>
