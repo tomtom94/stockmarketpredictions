@@ -444,8 +444,7 @@ const Main = () => {
         );
         let ys = gessLabels(dataNormalized, dimensionParams);
         ys = ys[ys.length - 1];
-        const nextChunk = array[index + 1];
-        if (_ys && nextChunk) {
+        if (_ys) {
           const predEvol = (ys - _ys) / _ys;
           let flag = {};
           if (predEvol > 0) {
@@ -644,13 +643,26 @@ const Main = () => {
             </a>
             {modelLogs.length > 0 && (
               <>
-                <p>
-                  {investing.end
-                    ? `You invested ${
-                        investing.start
-                      }$, you get out with ${Math.round(investing.end)}$`
-                    : `You are investing ${investing.start}$, click on Make predictions button`}
-                </p>
+                {investing.end ? (
+                  <>
+                    <p>{`You invested ${
+                      investing.start
+                    }$, you get out with ${Math.round(investing.end)}$`}</p>
+                    <u>
+                      Please be careful with the results. Each flag means you
+                      invested in the morning the day after. This way it allowed
+                      you to see the trend of the day. You may need to work with
+                      additional hourly data to make an AI just to guess what it
+                      would be, otherwise you make the deduction yourself by
+                      seeing the first hours of day. If you think it will make
+                      turn the prediction line it means the trend changed. You
+                      must also take into account this is just an educational
+                      work and there might be errors in my thinking.
+                    </u>
+                  </>
+                ) : (
+                  <p>{`You are investing ${investing.start}$, click on Make predictions button`}</p>
+                )}
                 <p>The financial indicators used are the followings :</p>
                 <ul>
                   <li>Close value </li>
@@ -682,8 +694,7 @@ const Main = () => {
               </li>
               <li>
                 {`Make predictions button : use test set (8%). Every day we
-                predict the day after's value in accordance to the chunks'
-                previous ${timeserieSize} periods. (you may need to zoom on the graph)`}
+                predict the day after's value in accordance to the previous RNN ${timeserieSize} timeseries. (you may need to zoom on the graph)`}
               </li>
             </ul>
             {sampleData && (
