@@ -9,7 +9,7 @@ import { SMA, RSI, stochastic, seasonality } from "./technicalindicators";
 import stockMarketData from "./stockMarketData.json";
 
 const Main = () => {
-  const epochs = 7;
+  const epochs = 10;
   const timeserieSize = 12;
   const batchSize = 32;
   const [data, setData] = useState([]);
@@ -357,8 +357,8 @@ const Main = () => {
       rebootSeries();
       setIsModelTraining(true);
       setModelResultTraining(null);
-      const { dataset: train, dimensionParams } = await makeDataset([0, 0.84]);
-      const { dataset: validate } = await makeDataset([0.84, 0.92]);
+      const { dataset: train, dimensionParams } = await makeDataset([0, 0.8]);
+      const { dataset: validate } = await makeDataset([0.8, 0.9]);
       const model = tf.sequential();
 
       const cells = [
@@ -427,7 +427,7 @@ const Main = () => {
 
   const makePredictions = () => {
     const newSeries = rebootSeries();
-    const xs = splitData([0.92, 1]);
+    const xs = splitData([0.9, 1]);
     const timeseriesChunks = createTimeseriesDimensionForRNN(xs);
     const predictions = [];
     const flagsSerie = [];
@@ -684,16 +684,16 @@ const Main = () => {
               </>
             )}
             <p>
-              {`We use a (84%, 8%, 8%) periods split for training, validation,
-              and test set, via batch of ${batchSize}.`}
+              {`We use a (80%, 10%, 10%) periods split via batch of ${batchSize} for : training, validation,
+              and test set.`}
             </p>
             <ul>
               <li>
                 Create and validate model button : use training and validation
-                set (84% and 8%).
+                set (80% and 10%).
               </li>
               <li>
-                {`Make predictions button : use test set (8%). Every day we
+                {`Make predictions button : use test set (10%). Every day we
                 predict the day after's value in accordance to the previous RNN ${timeserieSize} timeseries. (you may need to zoom on the graph)`}
               </li>
             </ul>
