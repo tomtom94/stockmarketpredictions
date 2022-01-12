@@ -4,7 +4,7 @@ import Highcharts from "highcharts/highstock";
 import axios from "axios";
 import HighchartsReact from "highcharts-react-official";
 import * as tf from "@tensorflow/tfjs";
-import { SMA, RSI, stochastic, seasonality } from "./technicalindicators";
+import { SMA, RSI, stochastic, seasonality, EMA } from "./technicalIndicators";
 import stockMarketDataDaily from "./stockMarketDataDaily.json";
 import stockMarketDataHourly from "./stockMarketDataHourly.json";
 
@@ -19,6 +19,8 @@ const Main = () => {
   const [modelResultTraining, setModelResultTraining] = useState(null);
   const modelLogsRef = useRef([]);
   const [investing, setInvesting] = useState({ start: 1000, end: null });
+  const [dataEma20, setDataEma20] = useState(null);
+  const [dataEma50, setDataEma50] = useState(null);
   const [dataSma20, setDataSma20] = useState(null);
   const [dataSma50, setDataSma50] = useState(null);
   const [dataSma100, setDataSma100] = useState(null);
@@ -90,6 +92,18 @@ const Main = () => {
       );
       setDataSma50(
         SMA({
+          period: 50,
+          data,
+        })
+      );
+      setDataEma20(
+        EMA({
+          period: 20,
+          data,
+        })
+      );
+      setDataEma50(
+        EMA({
           period: 50,
           data,
         })
@@ -211,6 +225,8 @@ const Main = () => {
   };
 
   const splitData = (trainingRange) => {
+    const descEma20 = JSON.parse(JSON.stringify(dataEma20)).reverse();
+    const descEma50 = JSON.parse(JSON.stringify(dataEma50)).reverse();
     const descSma20 = JSON.parse(JSON.stringify(dataSma20)).reverse();
     const descSma50 = JSON.parse(JSON.stringify(dataSma50)).reverse();
     const descSma100 = JSON.parse(JSON.stringify(dataSma100)).reverse();
@@ -223,6 +239,8 @@ const Main = () => {
       .reverse()
       .reduce((acc, curr, index, array) => {
         if (
+          !descEma20[index] ||
+          !descEma50[index] ||
           !descSma20[index] ||
           !descSma50[index] ||
           !descSma100[index] ||
@@ -242,7 +260,9 @@ const Main = () => {
               Number(curr[1]["2. high"]),
               Number(curr[1]["3. low"]),
               Number(curr[1]["5. volume"]),
-              // descSma20[index],
+              descEma20[index],
+              descEma50[index],
+              descSma20[index],
               descSma50[index],
               descSma100[index],
               descRsi14[index],
@@ -378,7 +398,7 @@ const Main = () => {
       model.add(
         tf.layers.rnn({
           cell: cells,
-          inputShape: [timeserieSize, 11],
+          inputShape: [timeserieSize, 14],
           returnSequences: false,
         })
       );
@@ -673,15 +693,18 @@ const Main = () => {
                 />
                 <p>The financial indicators used are the followings :</p>
                 <ul>
-                  <li>Close value </li>
-                  <li>Open value </li>
-                  <li>Daily high value </li>
-                  <li>Daily low value </li>
-                  <li>Daily volume </li>
-                  <li>SMA50 (Simple Moving Average 50 periods) </li>
-                  <li>SMA100 (Simple Moving Average 100 periods) </li>
-                  <li>RSI14 (Relative Strength Index 14 periods) </li>
-                  <li>stochastic14 (last 14 periods) </li>
+                  <li>Close value</li>
+                  <li>Open value</li>
+                  <li>Daily high value</li>
+                  <li>Daily low value</li>
+                  <li>Daily volume</li>
+                  <li>EMA20 (Exponential Moving Average 20 periods)</li>
+                  <li>EMA50 (Exponential Moving Average 50 periods)</li>
+                  <li>SMA20 (Simple Moving Average 20 periods)</li>
+                  <li>SMA50 (Simple Moving Average 50 periods)</li>
+                  <li>SMA100 (Simple Moving Average 100 periods)</li>
+                  <li>RSI14 (Relative Strength Index 14 periods)</li>
+                  <li>stochastic14 (last 14 periods)</li>
                   <li>Weekly seasonality</li>
                 </ul>
               </>
@@ -740,6 +763,9 @@ const Main = () => {
                       <th>High</th>
                       <th>Low</th>
                       <th>Volume</th>
+                      <th>EMA20</th>
+                      <th>EMA50</th>
+                      <th>SMA20</th>
                       <th>SMA50</th>
                       <th>SMA100</th>
                       <th>RSI14</th>

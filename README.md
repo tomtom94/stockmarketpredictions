@@ -1,4 +1,4 @@
-# Elegant financial predictions app with Tensorflow.js
+# Elegant and for real stock predictions App with Tensorflow.js
 
 ## Introduction
 

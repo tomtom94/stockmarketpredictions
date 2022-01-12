@@ -13,6 +13,21 @@ export const SMA = ({ period, data }) => {
   }, []);
 };
 
+export const EMA = ({ period, data }) => {
+  const k = 2 / (period + 1);
+  let EMAYesterday;
+  return data.reduce((acc, curr, index, array) => {
+    if (!EMAYesterday) {
+      const value = Number(curr[1]["4. close"]);
+      EMAYesterday = value;
+      return acc;
+    }
+    const value = Number(curr[1]["4. close"]) * k + EMAYesterday * (1 - k);
+    EMAYesterday = value;
+    return [...acc, value];
+  }, []);
+};
+
 export const stochastic = ({ period, data }) => {
   // https://investexcel.net/how-to-calculate-the-stochastic-oscillator/
   return data.reduce((acc, curr, index, array) => {
