@@ -5,11 +5,11 @@ import axios from "axios";
 import HighchartsReact from "highcharts-react-official";
 import * as tf from "@tensorflow/tfjs";
 import { SMA, RSI, stochastic, seasonality } from "./technicalindicators";
-
-import stockMarketData from "./stockMarketData.json";
+import stockMarketDataDaily from "./stockMarketDataDaily.json";
+import stockMarketDataHourly from "./stockMarketDataHourly.json";
 
 const Main = () => {
-  const epochs = 10;
+  const epochs = 5;
   const timeserieSize = 12;
   const batchSize = 32;
   const [data, setData] = useState([]);
@@ -105,12 +105,19 @@ const Main = () => {
 
   useEffect(() => {
     setData(
-      Object.entries(stockMarketData["Time Series (Daily)"]).sort(
+      Object.entries(stockMarketDataDaily["Time Series (Daily)"]).sort(
         (a, b) => new Date(a[0]) - new Date(b[0])
       )
     );
-    setGraphTitle(stockMarketData["Meta Data"]["2. Symbol"]);
-  }, [stockMarketData]);
+    setGraphTitle(stockMarketDataDaily["Meta Data"]["2. Symbol"]);
+  }, [stockMarketDataDaily]);
+
+  // useEffect(() => {
+  //   setData(
+  //     stockMarketDataHourly.sort((a, b) => new Date(a[0]) - new Date(b[0]))
+  //   );
+  //   setGraphTitle("AMZN Hourly");
+  // }, [stockMarketDataHourly]);
 
   useEffect(() => {
     if (
@@ -179,27 +186,27 @@ const Main = () => {
     setSeries([]);
     setData([]);
     modelLogsRef.current = [];
-    try {
-      const { data } = await axios.get(
-        `https://www.alphavantage.co/query?${new URLSearchParams({
-          function: "TIME_SERIES_DAILY",
-          symbol,
-          outputsize: "full",
-          apikey: "73H4T3JL70SI8VON",
-        })}`,
-        {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+    const { data } = await axios.get(
+      `https://www.alphavantage.co/query?${new URLSearchParams({
+        function: "TIME_SERIES_DAILY",
+        symbol,
+        outputsize: "full",
+        apikey: "73H4T3JL70SI8VON",
+      })}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+    if (data["Error Message"]) {
+      setFormError(data["Error Message"]);
+    } else {
       setData(
         Object.entries(data["Time Series (Daily)"]).sort(
           (a, b) => new Date(a[0]) - new Date(b[0])
         )
       );
       setGraphTitle(data["Meta Data"]["2. Symbol"]);
-    } catch (error) {
-      setFormError(error);
     }
   };
 
@@ -365,13 +372,14 @@ const Main = () => {
         tf.layers.lstmCell({ units: 16 }),
         tf.layers.lstmCell({ units: 16 }),
         tf.layers.lstmCell({ units: 16 }),
+        tf.layers.lstmCell({ units: 16 }),
       ];
 
       model.add(
         tf.layers.rnn({
           cell: cells,
           inputShape: [timeserieSize, 11],
-          returnSequences: true,
+          returnSequences: false,
         })
       );
 
@@ -432,58 +440,63 @@ const Main = () => {
     const predictions = [];
     const flagsSerie = [];
     let _money = investing.start;
-    let _flag = { label: null, type: null };
+    let _flag = {};
     let _value;
     let _ys;
 
     timeseriesChunks.forEach((chunk, index, array) => {
-      const prevChunk = array[index - 1];
-      if (prevChunk) {
-        const { dataNormalized, dimensionParams } = normalizeData(
-          chunk.map((e) => e[1])
-        );
-        let ys = gessLabels(dataNormalized, dimensionParams);
-        ys = ys[ys.length - 1];
-        if (_ys) {
-          const predEvol = (ys - _ys) / _ys;
-          let flag = {};
-          if (predEvol > 0) {
-            flag.type = "buy";
+      const { dataNormalized, dimensionParams } = normalizeData(
+        chunk.map((e) => e[1])
+      );
+      let ys = gessLabels(dataNormalized, dimensionParams);
+      ys = ys[ys.length - 1];
+      if (_ys) {
+        const predEvol = (ys - _ys) / _ys;
+        let flag = {};
+        if (predEvol > 0 && ys > chunk[chunk.length - 1][1][0]) {
+          flag.type = "buy";
+        }
+        if (predEvol < 0 && ys < chunk[chunk.length - 1][1][0]) {
+          flag.type = "sell";
+        }
+        if (_flag.type !== flag.type && flag.type) {
+          if (!_value) {
+            _value = chunk[chunk.length - 1][1][0];
           }
-          if (predEvol < 0) {
-            flag.type = "sell";
-          }
-          if (_flag.type !== flag.type) {
-            if (!_value) {
-              _value = prevChunk[prevChunk.length - 1][1][0];
-            }
-            let realEvolv2 =
-              (prevChunk[prevChunk.length - 1][1][0] - _value) / _value;
+          let realEvolv2 = (chunk[chunk.length - 1][1][0] - _value) / _value;
 
-            if (_flag.type === "buy") {
-              _money = _money * (1 + realEvolv2);
-            }
-            if (_flag.type === "sell") {
-              _money = _money * (1 + -1 * realEvolv2);
-            }
-            _value = prevChunk[prevChunk.length - 1][1][0];
-            flag.label = `Investing ${Math.round(_money)}$ at value ${
-              prevChunk[prevChunk.length - 1][1][0]
-            }`;
-            flagsSerie.push({
-              x: new Date(prevChunk[prevChunk.length - 1][0]).getTime(),
-              title: flag.type,
-              text: flag.label,
-              color: flag.type === "buy" ? "green" : "red",
-            });
+          if (_flag.type === "buy") {
+            _money = _money * (1 + realEvolv2);
           }
+          if (_flag.type === "sell") {
+            _money = _money * (1 + -1 * realEvolv2);
+          }
+          _value = chunk[chunk.length - 1][1][0];
+          flag.label = `Investing ${Math.round(_money)}$ at value ${
+            chunk[chunk.length - 1][1][0]
+          }`;
+          flagsSerie.push({
+            x: new Date(chunk[chunk.length - 1][0]).getTime(),
+            title: flag.type,
+            text: flag.label,
+            color: flag.type === "buy" ? "green" : "red",
+          });
           _flag = flag;
         }
-        let datePredicted = new Date(chunk[chunk.length - 1][0]).getTime();
-
-        predictions.push([datePredicted, ys]);
-        _ys = ys;
       }
+      let datePredicted;
+      if (array[index + 1]) {
+        const nextChunk = array[index + 1];
+        datePredicted = new Date(nextChunk[nextChunk.length - 1][0]).getTime();
+      } else {
+        const lastDate = chunk[chunk.length - 1][0];
+        datePredicted = new Date(lastDate).setDate(
+          new Date(lastDate).getDate() + 1
+        );
+      }
+
+      predictions.push([datePredicted, ys]);
+      _ys = ys;
     });
     setInvesting({ start: 1000, end: _money });
     setSeries([
@@ -606,7 +619,7 @@ const Main = () => {
         </label>
         <button type="submit">Get New Stock data</button>
       </form>
-      {formError && <p>{formError.message}</p>}
+      {formError && <p>{formError}</p>}
       {series.length > 0 && (
         <>
           <HighchartsReact
@@ -644,25 +657,20 @@ const Main = () => {
             {modelLogs.length > 0 && (
               <>
                 {investing.end ? (
-                  <>
-                    <p>{`You invested ${
-                      investing.start
-                    }$, you get out with ${Math.round(investing.end)}$`}</p>
-                    <u>
-                      Please be careful with the results. Each flag means you
-                      invested in the morning the day after. This way it allowed
-                      you to see the trend of the day. You may need to work with
-                      additional hourly data to make an AI just to guess what it
-                      would be, otherwise you make the deduction yourself by
-                      seeing the first hours of day. If you think it will make
-                      turn the prediction line it means the trend changed. You
-                      must also take into account this is just an educational
-                      work and there might be errors in my thinking.
-                    </u>
-                  </>
+                  <p>{`You invested ${
+                    investing.start
+                  }$, you get off the train with ${Math.round(
+                    investing.end
+                  )}$`}</p>
                 ) : (
                   <p>{`You are investing ${investing.start}$, click on Make predictions button`}</p>
                 )}
+
+                <HighchartsReact
+                  highcharts={Highcharts}
+                  options={options2}
+                  constructorType={"chart"}
+                />
                 <p>The financial indicators used are the followings :</p>
                 <ul>
                   <li>Close value </li>
@@ -676,11 +684,6 @@ const Main = () => {
                   <li>stochastic14 (last 14 periods) </li>
                   <li>Weekly seasonality</li>
                 </ul>
-                <HighchartsReact
-                  highcharts={Highcharts}
-                  options={options2}
-                  constructorType={"chart"}
-                />
               </>
             )}
             <p>
