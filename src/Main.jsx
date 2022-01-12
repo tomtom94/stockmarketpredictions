@@ -9,7 +9,7 @@ import stockMarketDataDaily from "./stockMarketDataDaily.json";
 import stockMarketDataHourly from "./stockMarketDataHourly.json";
 
 const Main = () => {
-  const epochs = 5;
+  const epochs = 7;
   const timeserieSize = 12;
   const batchSize = 32;
   const [data, setData] = useState([]);
@@ -26,6 +26,7 @@ const Main = () => {
   const [dataSma100, setDataSma100] = useState(null);
   const [dataRsi14, setDataRsi14] = useState(null);
   const [dataRsi28, setDataRsi28] = useState(null);
+  const [dataStochastic7, setDataStochastic7] = useState(null);
   const [dataStochastic14, setDataStochastic14] = useState(null);
   const [formError, setFormError] = useState(null);
   const [symbol, setSymbol] = useState("");
@@ -35,11 +36,14 @@ const Main = () => {
   useEffect(() => {
     const areAllDataReady =
       data.length > 0 &&
+      dataEma20 &&
+      dataEma50 &&
       dataSma20 &&
       dataSma50 &&
       dataSma100 &&
       dataRsi14 &&
       dataRsi28 &&
+      dataStochastic7 &&
       dataStochastic14;
     if (areAllDataReady) {
       const sampleDataRaw = splitData([0, 1]).map((e) => e[1]);
@@ -56,16 +60,25 @@ const Main = () => {
     }
   }, [
     data,
+    dataEma20,
+    dataEma50,
     dataSma20,
     dataSma50,
     dataSma100,
     dataRsi14,
     dataRsi28,
+    dataStochastic7,
     dataStochastic14,
   ]);
 
   useEffect(() => {
     if (data.length) {
+      setDataStochastic7(
+        stochastic({
+          period: 7,
+          data,
+        })
+      );
       setDataStochastic14(
         stochastic({
           period: 14,
@@ -188,11 +201,14 @@ const Main = () => {
     setSampleData(null);
     setFormError(null);
     setInvesting({ start: 1000, end: null });
+    setDataEma20(null);
+    setDataEma50(null);
     setDataSma20(null);
     setDataSma50(null);
     setDataSma100(null);
     setDataRsi14(null);
     setDataRsi28(null);
+    setDataStochastic7(null);
     setDataStochastic14(null);
     setModelResultTraining(null);
     setModelLogs([]);
@@ -232,6 +248,9 @@ const Main = () => {
     const descSma100 = JSON.parse(JSON.stringify(dataSma100)).reverse();
     const descRsi14 = JSON.parse(JSON.stringify(dataRsi14)).reverse();
     const descRsi28 = JSON.parse(JSON.stringify(dataRsi28)).reverse();
+    const descStochastic7 = JSON.parse(
+      JSON.stringify(dataStochastic7)
+    ).reverse();
     const descStochastic14 = JSON.parse(
       JSON.stringify(dataStochastic14)
     ).reverse();
@@ -246,6 +265,7 @@ const Main = () => {
           !descSma100[index] ||
           !descRsi14[index] ||
           !descRsi28[index] ||
+          !descStochastic7[index] ||
           !descStochastic14[index]
         ) {
           return acc;
@@ -260,13 +280,14 @@ const Main = () => {
               Number(curr[1]["2. high"]),
               Number(curr[1]["3. low"]),
               Number(curr[1]["5. volume"]),
-              descEma20[index],
-              descEma50[index],
+              // descEma20[index],
+              // descEma50[index],
               descSma20[index],
               descSma50[index],
-              descSma100[index],
+              // descSma100[index],
               descRsi14[index],
               // descRsi28[index],
+              descStochastic7[index],
               descStochastic14[index],
               seasonality({ element: curr, fn: "cos", days: 7 * 24 * 60 * 60 }),
               seasonality({ element: curr, fn: "sin", days: 7 * 24 * 60 * 60 }),
@@ -398,7 +419,7 @@ const Main = () => {
       model.add(
         tf.layers.rnn({
           cell: cells,
-          inputShape: [timeserieSize, 14],
+          inputShape: [timeserieSize, 12],
           returnSequences: false,
         })
       );
@@ -674,6 +695,11 @@ const Main = () => {
             >
               More details on Github
             </a>
+            {isModelTraining && (
+              <p>
+                Please stay on the page, and leave your computer do the job ;)
+              </p>
+            )}
             {modelLogs.length > 0 && (
               <>
                 {investing.end ? (
@@ -698,13 +724,15 @@ const Main = () => {
                   <li>Daily high value</li>
                   <li>Daily low value</li>
                   <li>Daily volume</li>
-                  <li>EMA20 (Exponential Moving Average 20 periods)</li>
-                  <li>EMA50 (Exponential Moving Average 50 periods)</li>
+                  {/* <li>EMA20 (Exponential Moving Average 20 periods)</li>
+                  <li>EMA50 (Exponential Moving Average 50 periods)</li> */}
                   <li>SMA20 (Simple Moving Average 20 periods)</li>
                   <li>SMA50 (Simple Moving Average 50 periods)</li>
-                  <li>SMA100 (Simple Moving Average 100 periods)</li>
+                  {/* <li>SMA100 (Simple Moving Average 100 periods)</li> */}
                   <li>RSI14 (Relative Strength Index 14 periods)</li>
+                  {/* <li>RSI28 (Relative Strength Index 28 periods)</li> */}
                   <li>stochastic14 (last 14 periods)</li>
+                  <li>stochastic7 (last 7 periods)</li>
                   <li>Weekly seasonality</li>
                 </ul>
               </>
@@ -720,7 +748,7 @@ const Main = () => {
               </li>
               <li>
                 {`Make predictions button : use test set (10%). Every day we
-                predict the day after's value in accordance to the previous RNN ${timeserieSize} timeseries. (you may need to zoom on the graph)`}
+                predict the day after's value in accordance to the RNN ${timeserieSize} timeseries. (you may need to zoom on the graph)`}
               </li>
             </ul>
             {sampleData && (
@@ -763,12 +791,14 @@ const Main = () => {
                       <th>High</th>
                       <th>Low</th>
                       <th>Volume</th>
-                      <th>EMA20</th>
-                      <th>EMA50</th>
+                      {/* <th>EMA20</th>
+                      <th>EMA50</th> */}
                       <th>SMA20</th>
                       <th>SMA50</th>
-                      <th>SMA100</th>
+                      {/* <th>SMA100</th> */}
                       <th>RSI14</th>
+                      {/* <th>RSI28</th> */}
+                      <th>Stochastic7</th>
                       <th>Stochastic14</th>
                       <th>Weekly seasonality cosinus</th>
                       <th>Weekly seasonality sinus</th>
