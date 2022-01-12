@@ -19,11 +19,14 @@ const Main = () => {
   const [modelResultTraining, setModelResultTraining] = useState(null);
   const modelLogsRef = useRef([]);
   const [investing, setInvesting] = useState({ start: 1000, end: null });
+  const [dataEma10, setDataEma10] = useState(null);
   const [dataEma20, setDataEma20] = useState(null);
   const [dataEma50, setDataEma50] = useState(null);
+  const [dataSma10, setDataSma10] = useState(null);
   const [dataSma20, setDataSma20] = useState(null);
   const [dataSma50, setDataSma50] = useState(null);
   const [dataSma100, setDataSma100] = useState(null);
+  const [dataRsi7, setDataRsi7] = useState(null);
   const [dataRsi14, setDataRsi14] = useState(null);
   const [dataRsi28, setDataRsi28] = useState(null);
   const [dataStochastic7, setDataStochastic7] = useState(null);
@@ -36,11 +39,14 @@ const Main = () => {
   useEffect(() => {
     const areAllDataReady =
       data.length > 0 &&
+      dataEma10 &&
       dataEma20 &&
       dataEma50 &&
+      dataSma10 &&
       dataSma20 &&
       dataSma50 &&
       dataSma100 &&
+      dataRsi7 &&
       dataRsi14 &&
       dataRsi28 &&
       dataStochastic7 &&
@@ -60,11 +66,14 @@ const Main = () => {
     }
   }, [
     data,
+    dataEma10,
     dataEma20,
     dataEma50,
+    dataSma10,
     dataSma20,
     dataSma50,
     dataSma100,
+    dataRsi7,
     dataRsi14,
     dataRsi28,
     dataStochastic7,
@@ -85,6 +94,12 @@ const Main = () => {
           data,
         })
       );
+      setDataRsi7(
+        RSI({
+          period: 7,
+          data,
+        })
+      );
       setDataRsi14(
         RSI({
           period: 14,
@@ -97,6 +112,12 @@ const Main = () => {
           data,
         })
       );
+      setDataSma10(
+        SMA({
+          period: 10,
+          data,
+        })
+      );
       setDataSma20(
         SMA({
           period: 20,
@@ -106,6 +127,12 @@ const Main = () => {
       setDataSma50(
         SMA({
           period: 50,
+          data,
+        })
+      );
+      setDataEma10(
+        EMA({
+          period: 10,
           data,
         })
       );
@@ -201,11 +228,14 @@ const Main = () => {
     setSampleData(null);
     setFormError(null);
     setInvesting({ start: 1000, end: null });
+    setDataEma10(null);
     setDataEma20(null);
     setDataEma50(null);
+    setDataSma10(null);
     setDataSma20(null);
     setDataSma50(null);
     setDataSma100(null);
+    setDataRsi7(null);
     setDataRsi14(null);
     setDataRsi28(null);
     setDataStochastic7(null);
@@ -241,11 +271,14 @@ const Main = () => {
   };
 
   const splitData = (trainingRange) => {
+    const descEma10 = JSON.parse(JSON.stringify(dataEma10)).reverse();
     const descEma20 = JSON.parse(JSON.stringify(dataEma20)).reverse();
     const descEma50 = JSON.parse(JSON.stringify(dataEma50)).reverse();
+    const descSma10 = JSON.parse(JSON.stringify(dataSma10)).reverse();
     const descSma20 = JSON.parse(JSON.stringify(dataSma20)).reverse();
     const descSma50 = JSON.parse(JSON.stringify(dataSma50)).reverse();
     const descSma100 = JSON.parse(JSON.stringify(dataSma100)).reverse();
+    const descRsi7 = JSON.parse(JSON.stringify(dataRsi7)).reverse();
     const descRsi14 = JSON.parse(JSON.stringify(dataRsi14)).reverse();
     const descRsi28 = JSON.parse(JSON.stringify(dataRsi28)).reverse();
     const descStochastic7 = JSON.parse(
@@ -258,11 +291,14 @@ const Main = () => {
       .reverse()
       .reduce((acc, curr, index, array) => {
         if (
+          !descEma10[index] ||
           !descEma20[index] ||
           !descEma50[index] ||
+          !descSma10[index] ||
           !descSma20[index] ||
           !descSma50[index] ||
           !descSma100[index] ||
+          !descRsi7[index] ||
           !descRsi14[index] ||
           !descRsi28[index] ||
           !descStochastic7[index] ||
@@ -280,14 +316,17 @@ const Main = () => {
               Number(curr[1]["2. high"]),
               Number(curr[1]["3. low"]),
               Number(curr[1]["5. volume"]),
-              // descEma20[index],
-              // descEma50[index],
+              // descEma10[index],
+              descEma20[index],
+              descEma50[index],
+              // descSma10[index],
               descSma20[index],
               descSma50[index],
-              // descSma100[index],
+              descSma100[index],
+              // descRsi7[index],
               descRsi14[index],
               // descRsi28[index],
-              descStochastic7[index],
+              // descStochastic7[index],
               descStochastic14[index],
               seasonality({ element: curr, fn: "cos", days: 7 * 24 * 60 * 60 }),
               seasonality({ element: curr, fn: "sin", days: 7 * 24 * 60 * 60 }),
@@ -419,7 +458,7 @@ const Main = () => {
       model.add(
         tf.layers.rnn({
           cell: cells,
-          inputShape: [timeserieSize, 12],
+          inputShape: [timeserieSize, 14],
           returnSequences: false,
         })
       );
@@ -489,22 +528,23 @@ const Main = () => {
       const { dataNormalized, dimensionParams } = normalizeData(
         chunk.map((e) => e[1])
       );
-      let ys = gessLabels(dataNormalized, dimensionParams);
-      ys = ys[ys.length - 1];
+      const value = chunk[chunk.length - 1][1][0];
+      const date = chunk[chunk.length - 1][0];
+      const [ys] = gessLabels(dataNormalized, dimensionParams);
       if (_ys) {
         const predEvol = (ys - _ys) / _ys;
         let flag = {};
-        if (predEvol > 0 && ys > chunk[chunk.length - 1][1][0]) {
+        if (predEvol > 0 && ys > value) {
           flag.type = "buy";
         }
-        if (predEvol < 0 && ys < chunk[chunk.length - 1][1][0]) {
+        if (predEvol < 0 && ys < value) {
           flag.type = "sell";
         }
         if (_flag.type !== flag.type && flag.type) {
           if (!_value) {
-            _value = chunk[chunk.length - 1][1][0];
+            _value = value;
           }
-          let realEvolv2 = (chunk[chunk.length - 1][1][0] - _value) / _value;
+          let realEvolv2 = (value - _value) / _value;
 
           if (_flag.type === "buy") {
             _money = _money * (1 + realEvolv2);
@@ -512,12 +552,10 @@ const Main = () => {
           if (_flag.type === "sell") {
             _money = _money * (1 + -1 * realEvolv2);
           }
-          _value = chunk[chunk.length - 1][1][0];
-          flag.label = `Investing ${Math.round(_money)}$ at value ${
-            chunk[chunk.length - 1][1][0]
-          }`;
+          _value = value;
+          flag.label = `Investing ${Math.round(_money)}$ at value ${value}`;
           flagsSerie.push({
-            x: new Date(chunk[chunk.length - 1][0]).getTime(),
+            x: new Date(date).getTime(),
             title: flag.type,
             text: flag.label,
             color: flag.type === "buy" ? "green" : "red",
@@ -525,10 +563,12 @@ const Main = () => {
           _flag = flag;
         }
       }
+
       let datePredicted;
-      if (array[index + 1]) {
-        const nextChunk = array[index + 1];
-        datePredicted = new Date(nextChunk[nextChunk.length - 1][0]).getTime();
+      const nextChunk = array[index + 1];
+      if (nextChunk) {
+        const nextDate = nextChunk[nextChunk.length - 1][0];
+        datePredicted = new Date(nextDate).getTime();
       } else {
         const lastDate = chunk[chunk.length - 1][0];
         datePredicted = new Date(lastDate).setDate(
@@ -697,7 +737,9 @@ const Main = () => {
             </a>
             {isModelTraining && (
               <p>
-                Please stay on the page, and leave your computer do the job ;)
+                <u>
+                  Please stay on the page, and leave your computer do the job ;)
+                </u>
               </p>
             )}
             {modelLogs.length > 0 && (
@@ -717,26 +759,29 @@ const Main = () => {
                   options={options2}
                   constructorType={"chart"}
                 />
-                <p>The financial indicators used are the followings :</p>
-                <ul>
-                  <li>Close value</li>
-                  <li>Open value</li>
-                  <li>Daily high value</li>
-                  <li>Daily low value</li>
-                  <li>Daily volume</li>
-                  {/* <li>EMA20 (Exponential Moving Average 20 periods)</li>
-                  <li>EMA50 (Exponential Moving Average 50 periods)</li> */}
-                  <li>SMA20 (Simple Moving Average 20 periods)</li>
-                  <li>SMA50 (Simple Moving Average 50 periods)</li>
-                  {/* <li>SMA100 (Simple Moving Average 100 periods)</li> */}
-                  <li>RSI14 (Relative Strength Index 14 periods)</li>
-                  {/* <li>RSI28 (Relative Strength Index 28 periods)</li> */}
-                  <li>stochastic14 (last 14 periods)</li>
-                  <li>stochastic7 (last 7 periods)</li>
-                  <li>Weekly seasonality</li>
-                </ul>
               </>
             )}
+            <p>The financial indicators used are the followings :</p>
+            <ul>
+              <li>Close value</li>
+              <li>Open value</li>
+              <li>Daily high value</li>
+              <li>Daily low value</li>
+              <li>Daily volume</li>
+              {/* <li>EMA10 (Exponential Moving Average 10 periods)</li> */}
+              <li>EMA20 (Exponential Moving Average 20 periods)</li>
+              <li>EMA50 (Exponential Moving Average 50 periods)</li>
+              {/* <li>SMA10 (Simple Moving Average 10 periods)</li> */}
+              <li>SMA20 (Simple Moving Average 20 periods)</li>
+              <li>SMA50 (Simple Moving Average 50 periods)</li>
+              <li>SMA100 (Simple Moving Average 100 periods)</li>
+              {/* <li>RSI7 (Relative Strength Index 7 periods)</li> */}
+              <li>RSI14 (Relative Strength Index 14 periods)</li>
+              {/* <li>RSI28 (Relative Strength Index 28 periods)</li> */}
+              {/* <li>Stochastic7 (last 7 periods)</li> */}
+              <li>Stochastic14 (last 14 periods)</li>
+              <li>Weekly seasonality</li>
+            </ul>
             <p>
               {`We use a (80%, 10%, 10%) periods split via batch of ${batchSize} for : training, validation,
               and test set.`}
@@ -791,14 +836,17 @@ const Main = () => {
                       <th>High</th>
                       <th>Low</th>
                       <th>Volume</th>
-                      {/* <th>EMA20</th>
-                      <th>EMA50</th> */}
+                      {/* <th>EMA10</th> */}
+                      <th>EMA20</th>
+                      <th>EMA50</th>
+                      {/* <th>SMA10</th> */}
                       <th>SMA20</th>
                       <th>SMA50</th>
-                      {/* <th>SMA100</th> */}
+                      <th>SMA100</th>
+                      {/* <th>RSI7</th> */}
                       <th>RSI14</th>
                       {/* <th>RSI28</th> */}
-                      <th>Stochastic7</th>
+                      {/* <th>Stochastic7</th> */}
                       <th>Stochastic14</th>
                       <th>Weekly seasonality cosinus</th>
                       <th>Weekly seasonality sinus</th>
