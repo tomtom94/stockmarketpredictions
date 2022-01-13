@@ -4,7 +4,7 @@ import Highcharts from "highcharts/highstock";
 import axios from "axios";
 import HighchartsReact from "highcharts-react-official";
 import * as tf from "@tensorflow/tfjs";
-import { SMA, RSI, stochastic, seasonality, EMA } from "./technicalIndicators";
+import { SMA, RSI, stochastic, seasonality, EMA } from "./technicalindicators";
 import stockMarketDataDaily from "./stockMarketDataDaily.json";
 import stockMarketDataHourly from "./stockMarketDataHourly.json";
 
