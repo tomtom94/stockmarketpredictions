@@ -316,20 +316,20 @@ const Main = () => {
               Number(curr[1]["2. high"]),
               Number(curr[1]["3. low"]),
               Number(curr[1]["5. volume"]),
-              // descEma10[index],
+              descEma10[index],
               descEma20[index],
               descEma50[index],
-              // descSma10[index],
+              descSma10[index],
               descSma20[index],
               descSma50[index],
               descSma100[index],
-              // descRsi7[index],
+              descRsi7[index],
               descRsi14[index],
-              // descRsi28[index],
-              // descStochastic7[index],
+              descRsi28[index],
+              descStochastic7[index],
               descStochastic14[index],
-              seasonality({ element: curr, fn: "cos", days: 7 * 24 * 60 * 60 }),
-              seasonality({ element: curr, fn: "sin", days: 7 * 24 * 60 * 60 }),
+              // seasonality({ element: curr, fn: "cos", days: 7 * 24 * 60 * 60 }),
+              // seasonality({ element: curr, fn: "sin", days: 7 * 24 * 60 * 60 }),
             ],
           ],
         ];
@@ -458,7 +458,7 @@ const Main = () => {
       model.add(
         tf.layers.rnn({
           cell: cells,
-          inputShape: [timeserieSize, 14],
+          inputShape: [timeserieSize, 17],
           returnSequences: false,
         })
       );
@@ -768,19 +768,19 @@ const Main = () => {
               <li>Daily high value</li>
               <li>Daily low value</li>
               <li>Daily volume</li>
-              {/* <li>EMA10 (Exponential Moving Average 10 periods)</li> */}
+              <li>EMA10 (Exponential Moving Average 10 periods)</li>
               <li>EMA20 (Exponential Moving Average 20 periods)</li>
               <li>EMA50 (Exponential Moving Average 50 periods)</li>
-              {/* <li>SMA10 (Simple Moving Average 10 periods)</li> */}
+              <li>SMA10 (Simple Moving Average 10 periods)</li>
               <li>SMA20 (Simple Moving Average 20 periods)</li>
               <li>SMA50 (Simple Moving Average 50 periods)</li>
               <li>SMA100 (Simple Moving Average 100 periods)</li>
-              {/* <li>RSI7 (Relative Strength Index 7 periods)</li> */}
+              <li>RSI7 (Relative Strength Index 7 periods)</li>
               <li>RSI14 (Relative Strength Index 14 periods)</li>
-              {/* <li>RSI28 (Relative Strength Index 28 periods)</li> */}
-              {/* <li>Stochastic7 (last 7 periods)</li> */}
+              <li>RSI28 (Relative Strength Index 28 periods)</li>
+              <li>Stochastic7 (last 7 periods)</li>
               <li>Stochastic14 (last 14 periods)</li>
-              <li>Weekly seasonality</li>
+              {/* <li>Weekly seasonality</li> */}
             </ul>
             <p>
               {`We use a (80%, 10%, 10%) periods split via batch of ${batchSize} for : training, validation,
@@ -836,20 +836,20 @@ const Main = () => {
                       <th>High</th>
                       <th>Low</th>
                       <th>Volume</th>
-                      {/* <th>EMA10</th> */}
+                      <th>EMA10</th>
                       <th>EMA20</th>
                       <th>EMA50</th>
-                      {/* <th>SMA10</th> */}
+                      <th>SMA10</th>
                       <th>SMA20</th>
                       <th>SMA50</th>
                       <th>SMA100</th>
-                      {/* <th>RSI7</th> */}
+                      <th>RSI7</th>
                       <th>RSI14</th>
-                      {/* <th>RSI28</th> */}
-                      {/* <th>Stochastic7</th> */}
+                      <th>RSI28</th>
+                      <th>Stochastic7</th>
                       <th>Stochastic14</th>
-                      <th>Weekly seasonality cosinus</th>
-                      <th>Weekly seasonality sinus</th>
+                      {/* <th>Weekly seasonality cosinus</th> */}
+                      {/* <th>Weekly seasonality sinus</th> */}
                     </tr>
                   </thead>
                   <tbody>
