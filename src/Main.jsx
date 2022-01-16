@@ -10,7 +10,7 @@ import stockMarketDataHourly from "./stockMarketDataHourly.json";
 
 const Main = () => {
   const epochs = 7;
-  const timeserieSize = 1;
+  const timeserieSize = 2;
   const batchSize = 32;
   const [data, setData] = useState([]);
   const [series, setSeries] = useState([]);
@@ -527,9 +527,10 @@ const Main = () => {
     let _value;
     let _ys;
 
+    const gap = xs.length - timeseriesChunks.length;
     const labels = gessLabels(timeseriesChunks, dimensionParams);
     labels.forEach((ys, index) => {
-      const baseIndex = index + timeserieSize;
+      const baseIndex = index + gap;
       const value = xs[baseIndex][1][0];
       const date = xs[baseIndex][0];
       if (_ys) {
