@@ -10,7 +10,7 @@ import stockMarketDataHourly from "./stockMarketDataHourly.json";
 
 const Main = () => {
   const epochs = 7;
-  const timeserieSize = 2;
+  const timeserieSize = 1;
   const batchSize = 32;
   const [data, setData] = useState([]);
   const [series, setSeries] = useState([]);
