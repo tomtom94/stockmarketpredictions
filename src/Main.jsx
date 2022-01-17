@@ -10,7 +10,7 @@ import stockMarketDataHourly from "./stockMarketDataHourly.json";
 
 const Main = () => {
   const epochs = 7;
-  const timeserieSize = 2;
+  const timeserieSize = 10;
   const batchSize = 32;
   const [data, setData] = useState([]);
   const [series, setSeries] = useState([]);
@@ -513,31 +513,27 @@ const Main = () => {
   const makePredictions = () => {
     const newSeries = rebootSeries();
     const xs = splitData([0.9, 1]);
-
-    const { dataNormalized: timeseriesChunks, dimensionParams } = normalizeData(
-      xs.map((e1) => e1[1])
-    );
+    const timeseriesChunks = createTimeseriesDimensionForRNN(xs);
     const predictions = [];
     const flagsSerie = [];
     let _money = investing.start;
     let _flag = {};
     let _value;
     let _ys;
-
-    const gap = xs.length - timeseriesChunks.length;
-    const labels = gessLabels(timeseriesChunks, dimensionParams);
-    labels.forEach((ys, index) => {
-      const baseIndex = index + gap;
-      const value = xs[baseIndex][1][0];
-      const date = xs[baseIndex][0];
+    timeseriesChunks.forEach((chunk, index, array) => {
+      const { dataNormalized, dimensionParams } = normalizeData(
+        chunk.map((e) => e[1])
+      );
+      const value = chunk[chunk.length - 1][1][0];
+      const date = chunk[chunk.length - 1][0];
+      const [ys] = gessLabels(dataNormalized, dimensionParams);
       if (_ys) {
-        const predictionLineEvol = (ys - _ys) / _ys;
-        const predictionEvol = (ys - value) / value;
+        const predEvol = (ys - _ys) / _ys;
         let flag = {};
-        if (predictionLineEvol > 0 && predictionEvol > 0) {
+        if (predEvol > 0 && ys > value) {
           flag.type = "buy";
         }
-        if (predictionLineEvol < 0 && predictionEvol < 0) {
+        if (predEvol < 0 && ys < value) {
           flag.type = "sell";
         }
         if (_flag.type !== flag.type && flag.type) {
@@ -565,12 +561,17 @@ const Main = () => {
       }
 
       let datePredicted;
-      const nextChunk = xs[baseIndex + 1];
+      const nextChunk = array[index + 1];
       if (nextChunk) {
-        datePredicted = new Date(nextChunk[0]).getTime();
+        const nextDate = nextChunk[nextChunk.length - 1][0];
+        datePredicted = new Date(nextDate).getTime();
       } else {
-        datePredicted = new Date(date).setDate(new Date(date).getDate() + 1);
+        const lastDate = chunk[chunk.length - 1][0];
+        datePredicted = new Date(lastDate).setDate(
+          new Date(lastDate).getDate() + 1
+        );
       }
+
       predictions.push([datePredicted, ys]);
       _ys = ys;
     });
