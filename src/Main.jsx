@@ -10,7 +10,7 @@ import stockMarketDataHourly from "./stockMarketDataHourly.json";
 
 const Main = () => {
   const epochs = 7;
-  const timeserieSize = 1;
+  const timeserieSize = 2;
   const batchSize = 32;
   const [data, setData] = useState([]);
   const [series, setSeries] = useState([]);
@@ -390,19 +390,20 @@ const Main = () => {
           mean,
           std: Math.sqrt(
             dimension
-              .map((e) => Math.abs(e - mean) ** 2)
+              .map((e) => (e - mean) ** 2)
               .reduce((acc, curr) => acc + curr, 0) / dimension.length
           ),
           // https://www.geeksforgeeks.org/numpy-std-in-python/
         };
       });
     }
-
+    const epsilon = 1e-3;
     return {
       dataNormalized: createTimeseriesDimensionForRNN(
         dataRaw.map((set) =>
           set.map(
-            (e, i) => (e - dimensionParams[i].mean) / dimensionParams[i].std
+            (e, i) =>
+              (e - dimensionParams[i].mean) / (dimensionParams[i].std + epsilon)
             // https://www.tensorflow.org/tutorials/structured_data/time_series#normalize_the_data
           )
         )
@@ -444,8 +445,8 @@ const Main = () => {
       rebootSeries();
       setIsModelTraining(true);
       setModelResultTraining(null);
-      const { dataset: train, dimensionParams } = await makeDataset([0, 0.8]);
-      const { dataset: validate } = await makeDataset([0.8, 0.9]);
+      const { dataset: train } = await makeDataset([0, 0.7]);
+      const { dataset: validate } = await makeDataset([0.7, 0.9]);
       const model = tf.sequential();
 
       const cells = [
@@ -502,11 +503,7 @@ const Main = () => {
   };
 
   const gessLabels = (inputs, dimensionParams) => {
-    const xs = tf.tensor3d(inputs, [
-      inputs.length,
-      inputs[0].length,
-      inputs[0][0].length,
-    ]);
+    const xs = tf.tensor3d(inputs);
     let outputs = modelResultTraining.model.predict(xs);
     outputs = Array.from(outputs.dataSync());
     const results = unNormalizeData(outputs, dimensionParams[0]);
