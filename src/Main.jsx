@@ -763,7 +763,7 @@ const Main = () => {
                 </span>
               )}
               {typeof recurrence === "number" && recurrence > 32 && (
-                <span>It may takes a lot of time</span>
+                <span>It may take a lot of time</span>
               )}
             </label>
             <br />
