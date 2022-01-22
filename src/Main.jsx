@@ -9,9 +9,6 @@ import stockMarketDataDaily from "./stockMarketDataDaily.json";
 import stockMarketDataHourly from "./stockMarketDataHourly.json";
 
 const Main = () => {
-  const epochs = 7;
-  const timeserieSize = 10;
-  const batchSize = 32;
   const [data, setData] = useState([]);
   const [series, setSeries] = useState([]);
   const [isModelTraining, setIsModelTraining] = useState(false);
@@ -35,6 +32,13 @@ const Main = () => {
   const [symbol, setSymbol] = useState("");
   const [sampleData, setSampleData] = useState(null);
   const [graphTitle, setGraphTitle] = useState(null);
+  const [recurrence, setRecurrence] = useState(10);
+  const [strategy, setStrategy] = useState(1);
+  const [isPredictionLoading, setIsPredictionLoading] = useState(false);
+
+  const epochs = 7;
+  const timeserieSize = recurrence;
+  const batchSize = 32;
 
   useEffect(() => {
     const areAllDataReady =
@@ -510,87 +514,115 @@ const Main = () => {
     return results;
   };
 
-  const makePredictions = () => {
-    const newSeries = rebootSeries();
-    const xs = splitData([0.9, 1]);
-    const timeseriesChunks = createTimeseriesDimensionForRNN(xs);
-    const predictions = [];
-    const flagsSerie = [];
-    let _money = investing.start;
-    let _flag = {};
-    let _value;
-    let _ys;
-    timeseriesChunks.forEach((chunk, index, array) => {
-      const { dataNormalized, dimensionParams } = normalizeData(
-        chunk.map((e) => e[1])
-      );
-      const value = chunk[chunk.length - 1][1][0];
-      const date = chunk[chunk.length - 1][0];
-      const [ys] = gessLabels(dataNormalized, dimensionParams);
-      if (_ys) {
-        const predEvol = (ys - _ys) / _ys;
-        let flag = {};
-        if (predEvol > 0 && ys > value) {
-          flag.type = "buy";
-        }
-        if (predEvol < 0 && ys < value) {
-          flag.type = "sell";
-        }
-        if (_flag.type !== flag.type && flag.type) {
-          if (!_value) {
-            _value = value;
-          }
-          let realEvolv2 = (value - _value) / _value;
-
-          if (_flag.type === "buy") {
-            _money = _money * (1 + realEvolv2);
-          }
-          if (_flag.type === "sell") {
-            _money = _money * (1 + -1 * realEvolv2);
-          }
-          _value = value;
-          flag.label = `Investing ${Math.round(_money)}$ at value ${value}`;
-          flagsSerie.push({
-            x: new Date(date).getTime(),
-            title: flag.type,
-            text: flag.label,
-            color: flag.type === "buy" ? "green" : "red",
-          });
-          _flag = flag;
-        }
-      }
-
-      let datePredicted;
-      const nextChunk = array[index + 1];
-      if (nextChunk) {
-        const nextDate = nextChunk[nextChunk.length - 1][0];
-        datePredicted = new Date(nextDate).getTime();
-      } else {
-        const lastDate = chunk[chunk.length - 1][0];
-        datePredicted = new Date(lastDate).setDate(
-          new Date(lastDate).getDate() + 1
+  const makePredictions = async () => {
+    setIsPredictionLoading(true);
+    await new Promise((r) => setTimeout(r, 300));
+    try {
+      const newSeries = rebootSeries();
+      const xs = splitData([0.9, 1]);
+      const timeseriesChunks = createTimeseriesDimensionForRNN(xs);
+      const predictions = [];
+      const flagsSerie = [];
+      let _money = investing.start;
+      let _flag = {};
+      let _value;
+      let _lastValue;
+      let _ys;
+      timeseriesChunks.forEach((chunk, index, array) => {
+        const { dataNormalized, dimensionParams } = normalizeData(
+          chunk.map((e) => e[1])
         );
-      }
+        const value = chunk[chunk.length - 1][1][0];
+        _lastValue = value;
+        const date = chunk[chunk.length - 1][0];
+        const [ys] = gessLabels(dataNormalized, dimensionParams);
+        if (_ys) {
+          const predEvol = (ys - _ys) / _ys;
+          let flag = {};
+          if (
+            (strategy == 1 ? predEvol > 0 && ys > value : true) &&
+            (strategy == 2 ? predEvol > 0 : true) &&
+            (strategy == 3 ? ys > value : true)
+          ) {
+            flag.type = "buy";
+          }
+          if (
+            (strategy == 1 ? predEvol < 0 && ys < value : true) &&
+            (strategy == 2 ? predEvol < 0 : true) &&
+            (strategy == 3 ? ys < value : true)
+          ) {
+            flag.type = "sell";
+          }
+          if (_flag.type !== flag.type && flag.type) {
+            if (!_value) {
+              _value = value;
+            }
+            let realEvolv2 = (value - _value) / _value;
 
-      predictions.push([datePredicted, ys]);
-      _ys = ys;
-    });
-    setInvesting({ start: 1000, end: _money });
-    setSeries([
-      ...newSeries,
-      {
-        type: "line",
-        name: "Predicted value",
-        data: predictions,
-      },
-      {
-        type: "flags",
-        data: flagsSerie,
-        onSeries: "dataseries",
-        shape: "circlepin",
-        width: 18,
-      },
-    ]);
+            if (_flag.type === "buy") {
+              _money = _money * (1 + realEvolv2);
+            }
+            if (_flag.type === "sell") {
+              _money = _money * (1 + -1 * realEvolv2);
+            }
+            _value = value;
+            flag.label = `Investing ${Math.round(_money)}$ at value ${value}`;
+            flagsSerie.push({
+              x: new Date(date).getTime(),
+              title: flag.type,
+              text: flag.label,
+              color: flag.type === "buy" ? "green" : "red",
+            });
+            _flag = flag;
+          }
+        }
+
+        let datePredicted;
+        const nextChunk = array[index + 1];
+        if (nextChunk) {
+          const nextDate = nextChunk[nextChunk.length - 1][0];
+          datePredicted = new Date(nextDate).getTime();
+        } else {
+          const lastDate = chunk[chunk.length - 1][0];
+          datePredicted = new Date(lastDate).setDate(
+            new Date(lastDate).getDate() + 1
+          );
+        }
+
+        predictions.push([datePredicted, ys]);
+        _ys = ys;
+      });
+      (function finishOffTheLastTrade() {
+        let realEvolv2 = (_lastValue - _value) / _value;
+
+        if (_flag.type === "buy") {
+          _money = _money * (1 + realEvolv2);
+        }
+        if (_flag.type === "sell") {
+          _money = _money * (1 + -1 * realEvolv2);
+        }
+      })();
+      setInvesting({ start: 1000, end: _money });
+      setSeries([
+        ...newSeries,
+        {
+          type: "line",
+          name: "Predicted value",
+          data: predictions,
+        },
+        {
+          type: "flags",
+          data: flagsSerie,
+          onSeries: "dataseries",
+          shape: "circlepin",
+          width: 18,
+        },
+      ]);
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsPredictionLoading(false);
+    }
   };
 
   const rebootSeries = () => {
@@ -685,7 +717,7 @@ const Main = () => {
 
       <form onSubmit={getNewStock}>
         <label>
-          <span>Symbol </span>
+          <span>Symbol : </span>
           <input
             type="text"
             name="symbol"
@@ -706,24 +738,117 @@ const Main = () => {
           />
 
           <div style={{ margin: "10px 5px" }}>
+            <label>
+              <span>
+                Define how many periods are needed for the neural network to
+                detect recurrent patterns :
+              </span>
+              <input
+                size={2}
+                value={recurrence}
+                disabled={isModelTraining || isPredictionLoading}
+                onChange={(event) => {
+                  setRecurrence(
+                    isNaN(Number(event.target.value))
+                      ? event.target.value
+                      : Number(event.target.value)
+                  );
+                }}
+              />
+              {typeof recurrence !== "number" && <span>Only use number</span>}
+              {typeof recurrence === "number" && recurrence < 2 && (
+                <span>
+                  Minimum 2 recurrences in order to normalize inputs with mean
+                  and standard derivation
+                </span>
+              )}
+              {typeof recurrence === "number" && recurrence > 32 && (
+                <span>It may takes a lot of time</span>
+              )}
+            </label>
+            <br />
             <button
               onClick={createModel}
               type="button"
-              disabled={isModelTraining}
+              disabled={isModelTraining || isPredictionLoading}
               style={{ fontSize: 16, marginRight: 5 }}
             >
               {isModelTraining
-                ? "Model is training"
-                : "Create and validate model"}
+                ? "1. Model is training"
+                : "1. Create and validate model"}
             </button>
+            <br />
+            <br />
+            <span>
+              Define the flag order strategy (you can change it anytime even
+              when the tensorflow model is compiled, just need to click Make
+              predictions again) :
+            </span>
+            <br />
+            <input
+              disabled={
+                isModelTraining || !modelResultTraining || isPredictionLoading
+              }
+              checked={strategy == 1}
+              type="radio"
+              id="secure"
+              name="flag-strategy"
+              value={1}
+              onChange={(event) => {
+                setStrategy(Number(event.target.value));
+              }}
+            />
+            <label htmlFor="secure">
+              Default - The prediction next day is higher than the prediction
+              today & the prediction next day is higher than the real value
+              today (the reverse for sell order)
+            </label>
+            <br />
+            <input
+              disabled={
+                isModelTraining || !modelResultTraining || isPredictionLoading
+              }
+              checked={strategy == 2}
+              type="radio"
+              id="unsecure"
+              name="flag-strategy"
+              value={2}
+              onChange={(event) => {
+                setStrategy(Number(event.target.value));
+              }}
+            />
+            <label htmlFor="unsecure">
+              Sensible - The prediction next day is higher than the prediction
+              today (the reverse for sell order)
+            </label>
+            <br />
+            <input
+              disabled={
+                isModelTraining || !modelResultTraining || isPredictionLoading
+              }
+              checked={strategy == 3}
+              type="radio"
+              id="unsecure2"
+              name="flag-strategy"
+              value={3}
+              onChange={(event) => {
+                setStrategy(Number(event.target.value));
+              }}
+            />
+            <label htmlFor="unsecure2">
+              Classic - The prediction next day is higher than the real value
+              today (the reverse for sell order)
+            </label>
+            <br />
             <button
               onClick={makePredictions}
               type="button"
-              disabled={!modelResultTraining}
+              disabled={!modelResultTraining || isPredictionLoading}
               style={{ fontSize: 16, marginRight: 5 }}
             >
-              Make predictions
+              2. Make predictions
             </button>
+            <br />
             <a
               href="https://github.com/tomtom94/stockmarketpredictions"
               target="_blank"
@@ -736,6 +861,11 @@ const Main = () => {
                 <u>
                   Please stay on the page, and leave your computer do the job ;)
                 </u>
+              </p>
+            )}
+            {isPredictionLoading && (
+              <p>
+                <u>Please stay on the page, predictions are loading ;)</u>
               </p>
             )}
             {modelLogs.length > 0 && (
@@ -789,7 +919,7 @@ const Main = () => {
               </li>
               <li>
                 {`Make predictions button : use test set (10%). Every day we
-                predict the day after's value in accordance to the RNN ${timeserieSize} timeseries. (you may need to zoom on the graph)`}
+                predict the day after's value with the last sequence of ${timeserieSize} periods. (you may need to zoom on the graph)`}
               </li>
             </ul>
             {sampleData && (
