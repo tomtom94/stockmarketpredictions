@@ -341,7 +341,7 @@ const Main = () => {
       .reverse();
     const [bottom, top] = trainingRange;
     const chunk = dataRaw.slice(
-      bottom === 0 ? 0 : Math.ceil(bottom * dataRaw.length),
+      bottom === 0 ? 0 : Math.ceil(bottom * dataRaw.length) - 1,
       top === 1 ? dataRaw.length : Math.floor(top * dataRaw.length)
     );
     return chunk;
