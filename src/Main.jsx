@@ -32,8 +32,8 @@ const Main = () => {
   const [symbol, setSymbol] = useState("");
   const [sampleData, setSampleData] = useState(null);
   const [graphTitle, setGraphTitle] = useState(null);
-  const [recurrence, setRecurrence] = useState(7);
-  const [strategy, setStrategy] = useState(1);
+  const [recurrence, setRecurrence] = useState(14);
+  const [strategy, setStrategy] = useState(2);
   const [isPredictionLoading, setIsPredictionLoading] = useState(false);
 
   const epochs = 7;
@@ -784,9 +784,45 @@ const Main = () => {
             <br />
             <span>
               Define the flag order strategy (you can change it anytime even
-              when the tensorflow model is compiled, just need to click Make
-              predictions again) :
+              when the tensorflow model is already compiled, just need to click
+              Make predictions again) :
             </span>
+            <br />
+            <input
+              disabled={
+                isModelTraining || !modelResultTraining || isPredictionLoading
+              }
+              checked={strategy == 2}
+              type="radio"
+              id="Default"
+              name="flag-strategy"
+              value={2}
+              onChange={(event) => {
+                setStrategy(Number(event.target.value));
+              }}
+            />
+            <label htmlFor="Default">
+              Default - The prediction next day is higher than the prediction
+              today (the reverse for sell order)
+            </label>
+            <br />
+            <input
+              disabled={
+                isModelTraining || !modelResultTraining || isPredictionLoading
+              }
+              checked={strategy == 3}
+              type="radio"
+              id="classic"
+              name="flag-strategy"
+              value={3}
+              onChange={(event) => {
+                setStrategy(Number(event.target.value));
+              }}
+            />
+            <label htmlFor="classic">
+              Classic - The prediction next day is higher than the real value
+              today (the reverse for sell order)
+            </label>
             <br />
             <input
               disabled={
@@ -802,44 +838,8 @@ const Main = () => {
               }}
             />
             <label htmlFor="secure">
-              Default - The prediction next day is higher than the prediction
+              Secure - The prediction next day is higher than the prediction
               today & the prediction next day is higher than the real value
-              today (the reverse for sell order)
-            </label>
-            <br />
-            <input
-              disabled={
-                isModelTraining || !modelResultTraining || isPredictionLoading
-              }
-              checked={strategy == 2}
-              type="radio"
-              id="unsecure"
-              name="flag-strategy"
-              value={2}
-              onChange={(event) => {
-                setStrategy(Number(event.target.value));
-              }}
-            />
-            <label htmlFor="unsecure">
-              Sensible - The prediction next day is higher than the prediction
-              today (the reverse for sell order)
-            </label>
-            <br />
-            <input
-              disabled={
-                isModelTraining || !modelResultTraining || isPredictionLoading
-              }
-              checked={strategy == 3}
-              type="radio"
-              id="unsecure2"
-              name="flag-strategy"
-              value={3}
-              onChange={(event) => {
-                setStrategy(Number(event.target.value));
-              }}
-            />
-            <label htmlFor="unsecure2">
-              Classic - The prediction next day is higher than the real value
               today (the reverse for sell order)
             </label>
             <br />
