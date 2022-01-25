@@ -32,7 +32,7 @@ const Main = () => {
   const [symbol, setSymbol] = useState("");
   const [sampleData, setSampleData] = useState(null);
   const [graphTitle, setGraphTitle] = useState(null);
-  const [recurrence, setRecurrence] = useState(10);
+  const [recurrence, setRecurrence] = useState(7);
   const [strategy, setStrategy] = useState(1);
   const [isPredictionLoading, setIsPredictionLoading] = useState(false);
 
@@ -340,9 +340,12 @@ const Main = () => {
       }, [])
       .reverse();
     const [bottom, top] = trainingRange;
+    const baseIndex = bottom === 0 ? 0 : Math.ceil(bottom * dataRaw.length) - 1;
     const chunk = dataRaw.slice(
-      bottom === 0 ? 0 : Math.ceil(bottom * dataRaw.length),
-      top === 1 ? undefined : Math.ceil(top * dataRaw.length)
+      baseIndex,
+      top === 1
+        ? undefined
+        : baseIndex + 1 + Math.floor((top - bottom) * dataRaw.length)
     );
     return chunk;
   };

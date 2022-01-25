@@ -1,9 +1,10 @@
 export const SMA = ({ period, data }) => {
   return data.reduce((acc, curr, index, array) => {
-    if (index + 1 - period < 0) {
+    const baseIndex = index - period + 1;
+    if (baseIndex < 0) {
       return acc;
     }
-    const targetValues = array.slice(index + 1 - period, index + 1);
+    const targetValues = array.slice(baseIndex, index + 1);
     const total = targetValues.reduce(
       (total, targetValue) => total + Number(targetValue[1]["4. close"]),
       0
@@ -31,10 +32,11 @@ export const EMA = ({ period, data }) => {
 export const stochastic = ({ period, data }) => {
   // https://investexcel.net/how-to-calculate-the-stochastic-oscillator/
   return data.reduce((acc, curr, index, array) => {
-    if (index + 1 - period < 0) {
+    const baseIndex = index - period + 1;
+    if (baseIndex < 0) {
       return acc;
     }
-    const targetValues = array.slice(index + 1 - period, index + 1);
+    const targetValues = array.slice(baseIndex, index + 1);
     const currentValue = targetValues[targetValues.length - 1][1]["4. close"];
     const highestHigh = targetValues.reduce((acc, targetValue) => {
       const indicator = Number(targetValue[1]["2. high"]);
@@ -59,15 +61,21 @@ export const stochastic = ({ period, data }) => {
 export const RSI = ({ period, data }) => {
   // https://www.macroption.com/rsi-calculation/
   return data.reduce((acc, curr, index, array) => {
-    if (index + 1 - period < 0) {
+    const baseIndex = index - period;
+    if (baseIndex < 0) {
       return acc;
     }
-    const targetValues = array.slice(index + 1 - period, index + 1);
+    const targetValues = array.slice(baseIndex, index + 1);
+    let _lastCloseUpMove;
     const upMoves = targetValues.reduce(
       (acc, targetValue) => {
-        const diff =
-          Number(targetValue[1]["1. open"]) -
-          Number(targetValue[1]["4. close"]);
+        if (!_lastCloseUpMove) {
+          _lastCloseUpMove = Number(targetValue[1]["4. close"]);
+          return acc;
+        }
+        const diff = Number(targetValue[1]["4. close"]) - _lastCloseUpMove;
+
+        _lastCloseUpMove = Number(targetValue[1]["4. close"]);
         if (diff < 0) {
           return acc;
         }
@@ -75,11 +83,16 @@ export const RSI = ({ period, data }) => {
       },
       { total: 0, count: 0 }
     );
+
+    let _lastCloseDownMove;
     const downMoves = targetValues.reduce(
       (acc, targetValue) => {
-        const diff =
-          Number(targetValue[1]["1. open"]) -
-          Number(targetValue[1]["4. close"]);
+        if (!_lastCloseDownMove) {
+          _lastCloseDownMove = Number(targetValue[1]["4. close"]);
+          return acc;
+        }
+        const diff = Number(targetValue[1]["4. close"]) - _lastCloseDownMove;
+        _lastCloseDownMove = Number(targetValue[1]["4. close"]);
         if (diff > 0) {
           return acc;
         }
