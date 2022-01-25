@@ -32,7 +32,7 @@ const Main = () => {
   const [symbol, setSymbol] = useState("");
   const [sampleData, setSampleData] = useState(null);
   const [graphTitle, setGraphTitle] = useState(null);
-  const [recurrence, setRecurrence] = useState(14);
+  const [recurrence, setRecurrence] = useState(24);
   const [strategy, setStrategy] = useState(2);
   const [isPredictionLoading, setIsPredictionLoading] = useState(false);
 
@@ -808,7 +808,10 @@ const Main = () => {
             <br />
             <input
               disabled={
-                isModelTraining || !modelResultTraining || isPredictionLoading
+                isModelTraining ||
+                !modelResultTraining ||
+                isPredictionLoading ||
+                true
               }
               checked={strategy == 3}
               type="radio"
@@ -826,7 +829,10 @@ const Main = () => {
             <br />
             <input
               disabled={
-                isModelTraining || !modelResultTraining || isPredictionLoading
+                isModelTraining ||
+                !modelResultTraining ||
+                isPredictionLoading ||
+                true
               }
               checked={strategy == 1}
               type="radio"
