@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Predictions made on Amazon stock market (fresh data until 2021-12-28) with Tensorflow.js.
+Predictions made on Amazon stock market (fresh data until 2022-02-04) with Tensorflow.js.
 
 Check out this app in live [stockmarketpredictions.herokuapp.com](https://stockmarketpredictions.herokuapp.com)
 
