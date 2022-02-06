@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Predictions made on Amazon stock market (fresh data until 2022-02-04) with Tensorflow.js.
+Predictions made on Amazon stock market (fresh data until 2022-02-03) with Tensorflow.js.
 
 Check out this app in live [stockmarketpredictions.herokuapp.com](https://stockmarketpredictions.herokuapp.com)
 
@@ -10,6 +10,8 @@ Check out this app in live [stockmarketpredictions.herokuapp.com](https://stockm
 
 Just wanna spend my time using Tensorflow.js :)
 Data come from the free API [alphavantage.co](https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=AMZN&outputsize=full&apikey=NOKEY)
+
+![alt text](src/screenshot.png?raw=true "Result graph with the predictions line")
 
 ## Getting started
 

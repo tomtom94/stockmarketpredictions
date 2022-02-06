@@ -928,7 +928,7 @@ const Main = () => {
               </li>
               <li>
                 {`Make predictions button : use test set (10%). Every day we
-                predict the day after's value with the last sequence of ${timeserieSize} periods. (you may need to zoom on the graph)`}
+                predict the day after's value relative to the last sequence of ${timeserieSize} periods. (you may need to zoom on the graph)`}
               </li>
             </ul>
             {sampleData && (
