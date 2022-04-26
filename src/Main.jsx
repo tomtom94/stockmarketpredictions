@@ -779,7 +779,19 @@ const Main = () => {
               {isModelTraining
                 ? "1. Model is training"
                 : "1. Create and validate model"}
-            </button>
+            </button>{" "}
+            <span style={{ marginLeft: 5, fontWeight: "bold" }}>
+              When you click this button you must <u>stay on this page</u> !
+              Otherwise your computer will put all your browser's work in
+              standby.
+              <br />
+              <u>It's around 7 minutes work just take a coffee</u>, depends your
+              device's power, don't do this with your smartphone ;) it's gonna
+              compiled batches of {recurrence} periods.
+              <br />
+              Bigger are the batches, longer it's gonna take time, smoother
+              would be the prediction line.
+            </span>
             <br />
             <br />
             <span>
