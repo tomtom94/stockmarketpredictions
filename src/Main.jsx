@@ -32,7 +32,7 @@ const Main = () => {
   const [symbol, setSymbol] = useState("");
   const [sampleData, setSampleData] = useState(null);
   const [graphTitle, setGraphTitle] = useState(null);
-  const [recurrence, setRecurrence] = useState(24);
+  const [recurrence, setRecurrence] = useState(16);
   const [strategy, setStrategy] = useState(2);
   const [isPredictionLoading, setIsPredictionLoading] = useState(false);
 
@@ -542,6 +542,10 @@ const Main = () => {
         if (_ys) {
           const predEvol = (ys - _ys) / _ys;
           let flag = {};
+
+          /**
+           * First we must define what type of order
+           */
           if (
             (strategy == 1 ? predEvol > 0 && ys > value : true) &&
             (strategy == 2 ? predEvol > 0 : true) &&
@@ -556,6 +560,10 @@ const Main = () => {
           ) {
             flag.type = "sell";
           }
+
+          /**
+           * Second we make an action if the type of order changed from before
+           */
           if (_flag.type !== flag.type && flag.type) {
             if (!_value) {
               _value = value;
@@ -785,7 +793,7 @@ const Main = () => {
               Otherwise your computer will put all your browser's work in
               standby.
               <br />
-              <u>It's around 7 minutes work just take a coffee</u>, depends your
+              <u>It's around 4 minutes work just take a coffee</u>, depends your
               device's power, don't do this with your smartphone ;) it's gonna
               compiled batches of {recurrence} periods.
               <br />
