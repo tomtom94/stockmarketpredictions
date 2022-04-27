@@ -934,7 +934,7 @@ const Main = () => {
               and test set.`}
             </p>
             <p>
-              {`For training and validation set compilation works with them via batch size of ${batchSize}`}
+              {`For training and validation set compilation works with batch size of ${batchSize}, which means 1 batch includes ${batchSize} timeseries of ${recurrence} recurrences.`}
             </p>
             <ul>
               <li>
