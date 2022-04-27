@@ -930,8 +930,11 @@ const Main = () => {
               {/* <li>Weekly seasonality</li> */}
             </ul>
             <p>
-              {`We use a (80%, 10%, 10%) periods split via batch of ${batchSize} for : training, validation,
+              {`We use a (80%, 10%, 10%) periods split for : training, validation,
               and test set.`}
+            </p>
+            <p>
+              {`For training and validation set compilation works with them via batch size of ${batchSize}`}
             </p>
             <ul>
               <li>
