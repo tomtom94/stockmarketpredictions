@@ -1,0 +1,26 @@
+name: 1) Upgrade tag version
+
+on:
+  push:
+    branches:
+      - master
+  # pull_request:
+  #   branches:
+  #     - master
+
+jobs:
+  build:
+    name: Generate tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        name: Check out code
+        with:
+          fetch-depth: 0
+
+      - uses: anothrNick/github-tag-action@1.36.0
+        name: Bump version and push tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+          WITH_V: true
+          DEFAULT_BUMP: none
