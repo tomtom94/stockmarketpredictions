@@ -29,8 +29,7 @@ jobs:
           image: stockmarketpredictionsfront
           tags: ${{ github.ref_name }}
           registry: rg.fr-par.scw.cloud/funcscwstockmarketpredictiocvxl0lfn
-          directory: public
-          dockerfile: public/Dockerfile
+          dockerfile: Dockerfile
           username: ${{ secrets.SCW_ACCESS_KEY }}
           password: ${{ secrets.SCW_SECRET_TOKEN }}
 
