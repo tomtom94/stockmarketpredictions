@@ -795,7 +795,7 @@ const Main = () => {
               <br />
               <u>It's around 4 minutes work just take a coffee</u>, depends your
               device's power, don't do this with your smartphone ;) it's gonna
-              compiled batches of {recurrence} periods.
+              compile batches of {recurrence} periods.
               <br />
               Bigger are the batches, longer it's gonna take time, smoother
               would be the prediction line.
