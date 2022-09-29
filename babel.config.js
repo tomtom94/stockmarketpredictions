@@ -1,14 +1,21 @@
 module.exports = (api) => {
   api.cache(true);
 
-  const presets = ["@babel/preset-env", "@babel/preset-react"];
-
-  const plugins = [
-    "@babel/plugin-proposal-class-properties",
-    "@babel/plugin-proposal-object-rest-spread",
-    "@babel/plugin-transform-spread",
-    "react-hot-loader/babel",
+  const presets = [
+    [
+      "@babel/preset-env",
+      {
+        targets: "defaults",
+        useBuiltIns: "usage",
+        corejs: { version: "3.25", proposals: false },
+        shippedProposals: true,
+      },
+    ],
+    "@babel/preset-react",
   ];
+
+  const plugins = ["react-hot-loader/babel"];
+
   return {
     presets,
     plugins,

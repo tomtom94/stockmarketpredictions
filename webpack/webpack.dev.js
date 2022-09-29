@@ -9,11 +9,7 @@ module.exports = {
   target: "web",
   devtool: "source-map",
   entry: {
-    bundle: [
-      require.resolve("core-js/stable"),
-      require.resolve("regenerator-runtime/runtime"),
-      paths.client,
-    ],
+    bundle: [paths.client],
   },
   output: {
     path: path.join(paths.build, paths.publicPath),

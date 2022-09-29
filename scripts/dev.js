@@ -16,6 +16,8 @@ const dev = async () => {
   try {
     rimraf.sync(paths.build);
 
+    process.env.NODE_ENV = "development";
+
     webpackConfig.entry.bundle = [
       `webpack-hot-middleware/client?path=http://localhost:${PORT}/__webpack_hmr&timeout=2000`,
       ...webpackConfig.entry.bundle,

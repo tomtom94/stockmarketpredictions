@@ -8,6 +8,8 @@ const build = async () => {
   try {
     rimraf.sync(paths.build);
 
+    process.env.NODE_ENV = "production";
+
     const compiler = webpack(webpackConfig);
 
     compiler.run((err, stats) => compilation(err, stats, compiler.stats));
