@@ -252,7 +252,7 @@ const Main = () => {
     modelLogsRef.current = [];
     const { data } = await axios.get(
       `https://www.alphavantage.co/query?${new URLSearchParams({
-        function: "TIME_SERIES_DAILY",
+        function: "TIME_SERIES_DAILY_ADJUSTED",
         symbol,
         outputsize: "full",
         apikey: "73H4T3JL70SI8VON",

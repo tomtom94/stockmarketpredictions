@@ -21,7 +21,7 @@ Check out this app in live [stockmarketpredictiocvxl0lfn-smpfront.functions.fnc.
 ## Motivations
 
 Just wanna spend my time using Tensorflow.js :)
-Data come from the free API [alphavantage.co](https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=AMZN&outputsize=full&apikey=NOKEY)
+Data come from the free API [alphavantage.co](https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=AMZN&outputsize=full&apikey=NOKEY)
 
 ![alt text](src/screenshot.png?raw=true "Result graph with the predictions line")
 
