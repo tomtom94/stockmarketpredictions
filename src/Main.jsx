@@ -466,7 +466,7 @@ const Main = () => {
       model.add(
         tf.layers.rnn({
           cell: cells,
-          inputShape: [timeserieSize, 17],
+          inputShape: [timeserieSize, 16],
           returnSequences: false,
         })
       );
