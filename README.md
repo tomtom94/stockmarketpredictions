@@ -15,6 +15,7 @@ Check out this app in live [stockmarketpredictiocvxl0lfn-smpfront.functions.fnc.
     - [With Node.js](#With-Nodejs)
     - [With Docker](#With-Docker)
 - [Must know about the app](#Must-know-about-the-app)
+  - [Import daily data from Yahoo Finance](#Import-daily-data-from-Yahoo-Finance)
   - [Continuous Integration and Continuous Delivery](#Continuous-Integration-and-Continuous-Delivery)
 - [Notes](#Notes)
 
@@ -90,6 +91,22 @@ Then open `http://localhost:80`
 ## Must know about the app
 
 You better use a good search engine like [Qwant.com](https://qwant.com), don't use Google. please.
+
+### Import daily data from Yahoo Finance
+
+You can run any company stock market you want, just download it yourself from Yahoo Finance.
+
+In order to do so choose your own ticker for example CGG company in France, from this page https://fr.finance.yahoo.com/chart/CGG.PA then open your browser console, click 5A to display 5 years of data. Hence copy the gross json result from the api call into the `yahooData.json` file.
+
+![alt text](src/yahooFinance.png?raw=true "Yahoo Finance")
+
+Then run the script to format it conveniently to make it looks like the alphavantage api reponse.
+
+```
+node src/yahooConverter.js
+```
+
+Then [run the app in dev mode](#start-in-dev-mode)
 
 ### Continuous Integration and Continuous Delivery
 

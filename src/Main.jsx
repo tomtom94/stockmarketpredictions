@@ -1,12 +1,12 @@
-import React, { useEffect, useCallback, useState, useRef } from 'react';
-import { hot } from 'react-hot-loader/root';
-import Highcharts from 'highcharts/highstock';
-import axios from 'axios';
-import HighchartsReact from 'highcharts-react-official';
-import * as tf from '@tensorflow/tfjs';
-import { SMA, RSI, stochastic, seasonality, EMA } from './technicalindicators';
-import stockMarketDataDaily from './stockMarketDataDaily.json';
-import stockMarketDataHourly from './stockMarketDataHourly.json';
+import React, { useEffect, useCallback, useState, useRef } from "react";
+import { hot } from "react-hot-loader/root";
+import Highcharts from "highcharts/highstock";
+import axios from "axios";
+import HighchartsReact from "highcharts-react-official";
+import * as tf from "@tensorflow/tfjs";
+import { SMA, RSI, stochastic, seasonality, EMA } from "./technicalindicators";
+import stockMarketDataDaily from "./yahooDataTreated.json";
+import stockMarketDataHourly from "./stockMarketDataHourly.json";
 
 const Main = () => {
   const [data, setData] = useState([]);
@@ -29,7 +29,7 @@ const Main = () => {
   const [dataStochastic7, setDataStochastic7] = useState(null);
   const [dataStochastic14, setDataStochastic14] = useState(null);
   const [formError, setFormError] = useState(null);
-  const [symbol, setSymbol] = useState('');
+  const [symbol, setSymbol] = useState("");
   const [sampleData, setSampleData] = useState(null);
   const [graphTitle, setGraphTitle] = useState(null);
   const [recurrence, setRecurrence] = useState(16);
@@ -163,11 +163,11 @@ const Main = () => {
 
   useEffect(() => {
     setData(
-      Object.entries(stockMarketDataDaily['Time Series (Daily)']).sort(
+      Object.entries(stockMarketDataDaily["Time Series (Daily)"]).sort(
         (a, b) => new Date(a[0]) - new Date(b[0])
       )
     );
-    setGraphTitle(stockMarketDataDaily['Meta Data']['2. Symbol']);
+    setGraphTitle(stockMarketDataDaily["Meta Data"]["2. Symbol"]);
   }, [stockMarketDataDaily]);
 
   // useEffect(() => {
@@ -180,17 +180,17 @@ const Main = () => {
   useEffect(() => {
     if (
       data.length &&
-      series.findIndex((serie) => serie.name === 'Stock value') === -1
+      series.findIndex((serie) => serie.name === "Stock value") === -1
     ) {
       setSeries([
         ...series,
         {
-          type: 'area',
-          id: 'dataseries',
-          name: 'Stock value',
+          type: "area",
+          id: "dataseries",
+          name: "Stock value",
           data: data.map((serie) => [
             new Date(serie[0]).getTime(),
-            Number(serie[1]['4. close']),
+            Number(serie[1]["4. close"]),
           ]),
           gapSize: 5,
           tooltip: {
@@ -209,7 +209,7 @@ const Main = () => {
                 1,
                 Highcharts.color(Highcharts.getOptions().colors[0])
                   .setOpacity(0)
-                  .get('rgba'),
+                  .get("rgba"),
               ],
             ],
           },
@@ -252,25 +252,25 @@ const Main = () => {
     modelLogsRef.current = [];
     const { data } = await axios.get(
       `https://www.alphavantage.co/query?${new URLSearchParams({
-        function: 'TIME_SERIES_DAILY_ADJUSTED',
+        function: "TIME_SERIES_DAILY_ADJUSTED",
         symbol,
-        outputsize: 'full',
-        apikey: '73H4T3JL70SI8VON',
+        outputsize: "full",
+        apikey: "73H4T3JL70SI8VON",
       })}`,
       {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
       }
     );
-    if (data['Error Message']) {
-      setFormError(data['Error Message']);
+    if (data["Error Message"]) {
+      setFormError(data["Error Message"]);
     } else {
       setData(
-        Object.entries(data['Time Series (Daily)']).sort(
+        Object.entries(data["Time Series (Daily)"]).sort(
           (a, b) => new Date(a[0]) - new Date(b[0])
         )
       );
-      setGraphTitle(data['Meta Data']['2. Symbol']);
+      setGraphTitle(data["Meta Data"]["2. Symbol"]);
     }
   };
 
@@ -315,10 +315,10 @@ const Main = () => {
           [
             curr[0],
             [
-              Number(curr[1]['4. close']),
-              Number(curr[1]['1. open']),
-              Number(curr[1]['2. high']),
-              Number(curr[1]['3. low']),
+              Number(curr[1]["4. close"]),
+              Number(curr[1]["1. open"]),
+              Number(curr[1]["2. high"]),
+              Number(curr[1]["3. low"]),
               // Number(curr[1]["5. volume"]),
               descEma10[index],
               descEma20[index],
@@ -480,9 +480,9 @@ const Main = () => {
       // model.summary();
 
       model.compile({
-        optimizer: 'adam',
-        loss: 'meanSquaredError',
-        metrics: ['accuracy'],
+        optimizer: "adam",
+        loss: "meanSquaredError",
+        metrics: ["accuracy"],
       });
       setModelLogs([]);
       modelLogsRef.current = [];
@@ -551,14 +551,14 @@ const Main = () => {
             (strategy == 2 ? predEvol > 0 : true) &&
             (strategy == 3 ? ys > value : true)
           ) {
-            flag.type = 'buy';
+            flag.type = "buy";
           }
           if (
             (strategy == 1 ? predEvol < 0 && ys < value : true) &&
             (strategy == 2 ? predEvol < 0 : true) &&
             (strategy == 3 ? ys < value : true)
           ) {
-            flag.type = 'sell';
+            flag.type = "sell";
           }
 
           /**
@@ -570,10 +570,10 @@ const Main = () => {
             }
             let realEvolv2 = (value - _value) / _value;
 
-            if (_flag.type === 'buy') {
+            if (_flag.type === "buy") {
               _money = _money * (1 + realEvolv2);
             }
-            if (_flag.type === 'sell') {
+            if (_flag.type === "sell") {
               _money = _money * (1 + -1 * realEvolv2);
             }
             _value = value;
@@ -582,7 +582,7 @@ const Main = () => {
               x: new Date(date).getTime(),
               title: flag.type,
               text: flag.label,
-              color: flag.type === 'buy' ? 'green' : 'red',
+              color: flag.type === "buy" ? "green" : "red",
             });
             _flag = flag;
           }
@@ -606,10 +606,10 @@ const Main = () => {
       (function finishOffTheLastTrade() {
         let realEvolv2 = (_lastValue - _value) / _value;
 
-        if (_flag.type === 'buy') {
+        if (_flag.type === "buy") {
           _money = _money * (1 + realEvolv2);
         }
-        if (_flag.type === 'sell') {
+        if (_flag.type === "sell") {
           _money = _money * (1 + -1 * realEvolv2);
         }
       })();
@@ -617,15 +617,15 @@ const Main = () => {
       setSeries([
         ...newSeries,
         {
-          type: 'line',
-          name: 'Predicted value',
+          type: "line",
+          name: "Predicted value",
           data: predictions,
         },
         {
-          type: 'flags',
+          type: "flags",
           data: flagsSerie,
-          onSeries: 'dataseries',
-          shape: 'circlepin',
+          onSeries: "dataseries",
+          shape: "circlepin",
           width: 18,
         },
       ]);
@@ -639,7 +639,7 @@ const Main = () => {
   const rebootSeries = () => {
     setInvesting({ start: 1000, end: null });
     const serieIndex = series.findIndex(
-      (serie) => serie.name === 'Predicted value'
+      (serie) => serie.name === "Predicted value"
     );
     let newSeries = series;
     if (serieIndex !== -1) {
@@ -660,7 +660,7 @@ const Main = () => {
 
     tooltip: {
       style: {
-        width: '200px',
+        width: "200px",
       },
       valueDecimals: 4,
       shared: true,
@@ -668,33 +668,33 @@ const Main = () => {
 
     yAxis: {
       title: {
-        text: 'stock value',
+        text: "stock value",
       },
     },
     xAxis: {
-      type: 'datetime',
+      type: "datetime",
     },
     series,
   };
 
   const options2 = {
     title: {
-      text: 'Model training graph',
+      text: "Model training graph",
     },
 
     subtitle: {
-      text: 'Tensorflow.js models loss through training',
+      text: "Tensorflow.js models loss through training",
     },
 
     yAxis: {
       title: {
-        text: 'Loss',
+        text: "Loss",
       },
     },
 
     xAxis: {
       title: {
-        text: 'Epoch',
+        text: "Epoch",
       },
       min: 1,
       max: epochs,
@@ -702,8 +702,8 @@ const Main = () => {
 
     series: [
       {
-        type: 'line',
-        name: 'loss',
+        type: "line",
+        name: "loss",
         data: modelLogs,
       },
     ],
@@ -745,10 +745,10 @@ const Main = () => {
           <HighchartsReact
             highcharts={Highcharts}
             options={options}
-            constructorType={'stockChart'}
+            constructorType={"stockChart"}
           />
 
-          <div style={{ margin: '10px 5px' }}>
+          <div style={{ margin: "10px 5px" }}>
             <label>
               <span>
                 Define how many periods are needed for the neural network to
@@ -766,14 +766,14 @@ const Main = () => {
                   );
                 }}
               />
-              {typeof recurrence !== 'number' && <span>Only use number</span>}
-              {typeof recurrence === 'number' && recurrence < 2 && (
+              {typeof recurrence !== "number" && <span>Only use number</span>}
+              {typeof recurrence === "number" && recurrence < 2 && (
                 <span>
                   Minimum 2 recurrences in order to normalize inputs with mean
                   and standard derivation
                 </span>
               )}
-              {typeof recurrence === 'number' && recurrence > 32 && (
+              {typeof recurrence === "number" && recurrence > 32 && (
                 <span>It may take a lot of time</span>
               )}
             </label>
@@ -785,10 +785,10 @@ const Main = () => {
               style={{ fontSize: 16, marginRight: 5 }}
             >
               {isModelTraining
-                ? '1. Model is training'
-                : '1. Create and validate model'}
-            </button>{' '}
-            <span style={{ marginLeft: 5, fontWeight: 'bold' }}>
+                ? "1. Model is training"
+                : "1. Create and validate model"}
+            </button>{" "}
+            <span style={{ marginLeft: 5, fontWeight: "bold" }}>
               When you click this button you must <u>stay on this page</u> !
               Otherwise your computer will put all your browser's work in
               standby.
@@ -881,7 +881,7 @@ const Main = () => {
             <a
               href="https://github.com/tomtom94/stockmarketpredictions"
               target="_blank"
-              style={{ fontSize: 16, margin: 5, textDecoration: 'none' }}
+              style={{ fontSize: 16, margin: 5, textDecoration: "none" }}
             >
               More details on Github
             </a>
@@ -912,7 +912,7 @@ const Main = () => {
                 <HighchartsReact
                   highcharts={Highcharts}
                   options={options2}
-                  constructorType={'chart'}
+                  constructorType={"chart"}
                 />
               </>
             )}
