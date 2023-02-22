@@ -100,13 +100,8 @@ In order to do so choose your own ticker for example CGG company in France, from
 
 ![alt text](src/yahooFinance.png?raw=true "Yahoo Finance")
 
-Then run the script to format it conveniently to make it looks like the alphavantage api reponse.
+The screenshot above will help you do the job.
 
-```
-node src/yahooConverter.js
-```
-
-Then [run the app in dev mode](#start-in-dev-mode)
 
 ### Continuous Integration and Continuous Delivery
 
