@@ -96,7 +96,7 @@ You better use a good search engine like [Qwant.com](https://qwant.com), don't u
 
 You can run any company stock market you want, just download it yourself from Yahoo Finance.
 
-In order to do so choose your own ticker for example CGG company in France, from this page https://fr.finance.yahoo.com/chart/CGG.PA then open your browser console, click 5A to display 5 years of data. Hence copy the gross json result from the api call into the `yahooData.json` file.
+In order to do so choose your own ticker for example CGG company in France, from this page https://fr.finance.yahoo.com/chart/CGG.PA open your browser console, click 5A to display 5 years of data. Then copy the gross json result from the api call into the texte area in the web page, click Submit Yahoo Data button.
 
 ![alt text](src/yahooFinance.png?raw=true "Yahoo Finance")
 

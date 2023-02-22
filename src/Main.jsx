@@ -5,8 +5,8 @@ import axios from 'axios'
 import HighchartsReact from 'highcharts-react-official'
 import * as tf from '@tensorflow/tfjs'
 import { SMA, RSI, stochastic, seasonality, EMA } from './technicalindicators'
-import stockMarketDataDaily from './yahooDataTreated.json'
-import stockMarketDataHourly from './stockMarketDataHourly.json'
+import yahooConverter from './yahooConverter'
+import stockMarketDataDaily from './stockMarketDataDaily.json'
 
 const Main = () => {
   const [data, setData] = useState([])
@@ -29,7 +29,6 @@ const Main = () => {
   const [dataStochastic7, setDataStochastic7] = useState(null)
   const [dataStochastic14, setDataStochastic14] = useState(null)
   const [formError, setFormError] = useState(null)
-  const [symbol, setSymbol] = useState('')
   const [sampleData, setSampleData] = useState(null)
   const [graphTitle, setGraphTitle] = useState(null)
   const [recurrence, setRecurrence] = useState(16)
@@ -201,13 +200,9 @@ const Main = () => {
     }
   }, [data, series])
 
-  const handleSymbolChange = (event) => {
-    setSymbol(event.target.value)
-  }
-
   const getNewStock = async (event) => {
     event.preventDefault()
-    if (!symbol) {
+    if (!event.target.symbol && !event.target.yahooData) {
       return
     }
     setGraphTitle(null)
@@ -232,23 +227,34 @@ const Main = () => {
     setSeries([])
     setData([])
     modelLogsRef.current = []
-    const { data } = await axios.get(
-      `https://www.alphavantage.co/query?${new URLSearchParams({
-        function: 'TIME_SERIES_DAILY_ADJUSTED',
-        symbol,
-        outputsize: 'full',
-        apikey: '73H4T3JL70SI8VON'
-      })}`,
-      {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+
+    try {
+      if (event.target.symbol) {
+        const { data } = await axios.get(
+          `https://www.alphavantage.co/query?${new URLSearchParams({
+            function: 'TIME_SERIES_DAILY_ADJUSTED',
+            symbol: event.target.symbol.value,
+            outputsize: 'full',
+            apikey: '73H4T3JL70SI8VON'
+          })}`,
+          {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+        if (data['Error Message']) {
+          throw new Error(data['Error Message'])
+        }
+        setData(Object.entries(data['Time Series (Daily)']).sort((a, b) => new Date(a[0]) - new Date(b[0])))
+        setGraphTitle(data['Meta Data']['2. Symbol'])
       }
-    )
-    if (data['Error Message']) {
-      setFormError(data['Error Message'])
-    } else {
-      setData(Object.entries(data['Time Series (Daily)']).sort((a, b) => new Date(a[0]) - new Date(b[0])))
-      setGraphTitle(data['Meta Data']['2. Symbol'])
+      if (event.target.yahooData) {
+        const yahooDataTreated = yahooConverter(JSON.parse(event.target.yahooData.value))
+        setData(Object.entries(yahooDataTreated['Time Series (Daily)']).sort((a, b) => new Date(a[0]) - new Date(b[0])))
+        setGraphTitle(yahooDataTreated['Meta Data']['2. Symbol'])
+      }
+    } catch (error) {
+      setFormError(error.message)
     }
   }
 
@@ -674,13 +680,26 @@ const Main = () => {
       <h1>Welcome to Stock Market Predictions App with Tensorflow.js</h1>
       <h2>Compile AI models with RNN Recurrent Neural Network of LSTM Long-Short Term Memory layers in the browser</h2>
 
-      <form onSubmit={getNewStock}>
-        <label>
-          <span>Symbol : </span>
-          <input type="text" name="symbol" placeholder="BTCUSD" onChange={handleSymbolChange} value={symbol}></input>
-        </label>
-        <button type="submit">Get New Stock data</button>
-      </form>
+      <ul>
+        <li>
+          <form onSubmit={getNewStock}>
+            <label>
+              <span>Alphavantage symbol : </span>
+              <input type="text" name="symbol" placeholder="BTCUSD"></input>
+            </label>
+            <button type="submit">Get New Stock data</button>
+          </form>
+        </li>
+        <li>
+          <form onSubmit={getNewStock}>
+            <label>
+              <span>JSON's response copy past : </span>
+              <textarea name="yahooData"></textarea>
+            </label>
+            <button type="submit">Submit Yahoo Data</button>
+          </form>
+        </li>
+      </ul>
       {formError && <p>{formError}</p>}
       {series.length > 0 && (
         <>
