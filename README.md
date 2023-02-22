@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Predictions made on Amazon stock market (fresh data until 2022-02-03) with Tensorflow.js.
+Predictions made on Amazon stock market (fresh data until 2022-02-03) with Tensorflow.js. But you can download freshened up data :)
 
 Check out this app in live [stockmarketpredictiocvxl0lfn-smpfront.functions.fnc.fr-par.scw.cloud](https://stockmarketpredictiocvxl0lfn-smpfront.functions.fnc.fr-par.scw.cloud)
 
