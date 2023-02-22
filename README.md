@@ -9,15 +9,15 @@ Check out this app in live [stockmarketpredictiocvxl0lfn-smpfront.functions.fnc.
 ## Table of contents
 
 - [Motivations](#motivations)
-- [Getting started](#Getting-started)
-  - [Start in dev mode](#Start-in-dev-mode)
-  - [Start in production mode](#Start-in-production-mode)
-    - [With Node.js](#With-Nodejs)
-    - [With Docker](#With-Docker)
-- [Must know about the app](#Must-know-about-the-app)
-  - [Import daily data from Yahoo Finance](#Import-daily-data-from-Yahoo-Finance)
-  - [Continuous Integration and Continuous Delivery](#Continuous-Integration-and-Continuous-Delivery)
-- [Notes](#Notes)
+- [Getting started](#getting-started)
+  - [Start in dev mode](#start-in-dev-mode)
+  - [Start in production mode](#start-in-production-mode)
+    - [With Node.js](#with-nodejs)
+    - [With Docker](#with-docker)
+- [Must know about the app](#must-know-about-the-app)
+  - [Import daily data from Yahoo Finance](#import-daily-data-from-yahoo-finance)
+  - [Continuous Integration and Continuous Delivery](#continuous-integration-and-continuous-delivery)
+- [Notes](#notes)
 
 ## Motivations
 
