@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import ReactDOM from "react-dom";
-import Main from "./Main";
+import React, { useEffect } from 'react'
+import ReactDOM from 'react-dom'
+import Main from './Main'
 
-ReactDOM.render(<Main />, document.querySelector("#root"));
+ReactDOM.render(<Main />, document.querySelector('#root'))

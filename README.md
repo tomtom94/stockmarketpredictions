@@ -10,6 +10,7 @@ Check out this app in live [stockmarketpredictiocvxl0lfn-smpfront.functions.fnc.
 
 - [Motivations](#motivations)
 - [Getting started](#getting-started)
+  - [Requirements](#requirements)
   - [Start in dev mode](#start-in-dev-mode)
   - [Start in production mode](#start-in-production-mode)
     - [With Node.js](#with-nodejs)
@@ -37,6 +38,16 @@ git clone https://github.com/tomtom94/stockmarketpredictions.git
 ```git
 cd stockmarketpredictions
 ```
+
+### Requirements
+
+Node.js version v16.3.0 minimum (because we need to use the [js optional chaining operator](https://node.green/#ES2020)). Hopefully you got `nvm` command already installed (best way to install node), hence just do
+
+```nvm
+nvm use
+```
+
+it's gonna use the `.nvmrc` file with v16.20.0
 
 ### Start in dev mode
 
