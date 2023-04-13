@@ -1,6 +1,6 @@
 {
   "name": "stockmarketpredictions",
-  "version": "v0.2.2",
+  "version": "v0.2.3",
   "description": "Stock Market Predictions",
   "main": "scripts/start.js",
   "engines": {
